@@ -233,3 +233,81 @@ test.describe("desk timer", () => {
     await expect(page.locator(".badge.earned", { hasText: "PT-Ready Summary" })).toBeVisible();
   });
 });
+
+test.describe("patterns", () => {
+  test("shows a desk-blocks-vs-spike insight once enough days are logged", async ({ page }) => {
+    await freshPage(page);
+
+    const { startDate, dateKeys } = await page.evaluate(() => {
+      const toDateKey = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const addDays = (dateKey: string, days: number) => {
+        const [y, m, d] = dateKey.split("-").map(Number);
+        return toDateKey(new Date(y, m - 1, d + days));
+      };
+      const today = toDateKey(new Date());
+      const startDate = addDays(today, -5);
+      const dateKeys = Array.from({ length: 6 }, (_, i) => addDays(startDate, i));
+      return { startDate, dateKeys };
+    });
+
+    const workBlocks = [2, 3, 4, 5, 6, 7];
+    const spikes = [3, 4, 5, 6, 7, 8];
+    const redFlags = {
+      legWeakness: false,
+      saddleNumbness: false,
+      troubleWalking: false,
+      bladderBowelChange: false,
+      troubleStartingUrine: false,
+      feverChills: false,
+      vomiting: false,
+      bloodUrineStool: false,
+      worseningAbdominalPain: false,
+    };
+    const days: Record<string, unknown> = {};
+    dateKeys.forEach((date, i) => {
+      days[date] = {
+        date,
+        dayNumber: i + 1,
+        morning: { pain: 4, stiffness: 3, worseThanYesterday: false, sleepQuality: 6 },
+        evening: {
+          worstSpike: spikes[i],
+          postExercisePainIncrease: 0,
+          painStillElevatedAfterOneHour: false,
+          symptomsSpread: false,
+          sittingToleranceMinutes: 30,
+          standingToleranceMinutes: 15,
+          walkingToleranceMinutes: 20,
+          walkingMinutesCompleted: 10,
+          heatUsed: false,
+          notes: "",
+        },
+        redFlags,
+        completedTaskIds: [],
+        swaps: {},
+        workBlocksCompleted: workBlocks[i],
+      };
+    });
+    const state = {
+      version: 1,
+      startDate,
+      phaseOverride: null,
+      days,
+      badges: {},
+      extension: null,
+      graduatedOn: null,
+      timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+      settings: { vibration: true, sound: false },
+      lastSavedAt: null,
+    };
+
+    await page.evaluate((s) => localStorage.setItem("pt-progression-v1", JSON.stringify(s)), state);
+    await page.reload();
+
+    await page.getByTestId("nav-progress").click();
+    const patterns = page.getByTestId("patterns-card");
+    await expect(patterns).toBeVisible();
+    await expect(patterns).toContainText("Desk blocks vs evening spike");
+    await expect(patterns).toContainText(/ran higher on heavier desk days/);
+  });
+});

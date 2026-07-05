@@ -1,7 +1,7 @@
 import type { AppState } from "../types";
 import { Card } from "../ui/bits";
 import { DecisionStrip, SparkRow } from "../ui/charts";
-import { decisionHistory, scoreFor, sortedDayEntries } from "../state/selectors";
+import { decisionHistory, insightsFor, scoreFor, sortedDayEntries } from "../state/selectors";
 import { phaseForDay } from "../data/plan";
 import { completionPct } from "../engine/adjust";
 
@@ -10,6 +10,7 @@ export function ProgressView(props: { state: AppState; todayKey: string }) {
   const entries = sortedDayEntries(state);
   const score = scoreFor(state, todayKey);
   const history = decisionHistory(state);
+  const insights = insightsFor(state, todayKey);
 
   const completions = entries.map((d) => {
     const plan = phaseForDay(d.dayNumber, state.phaseOverride);
@@ -54,6 +55,17 @@ export function ProgressView(props: { state: AppState; todayKey: string }) {
         <SparkRow label="Sitting tolerance (min)" values={entries.map((d) => d.evening?.sittingToleranceMinutes ?? null)} />
         <SparkRow label="Standing tolerance (min)" values={entries.map((d) => d.evening?.standingToleranceMinutes ?? null)} />
         <SparkRow label="Work blocks" values={entries.map((d) => d.workBlocksCompleted)} />
+      </Card>
+
+      <Card title="🔍 Patterns" testId="patterns-card">
+        {insights.map((insight) => (
+          <p key={insight.key} className="secondary">
+            <strong>{insight.label}.</strong> {insight.sentence}
+          </p>
+        ))}
+        <p className="muted">
+          Small-sample associations from one person's log — a hint of where to look, never a diagnosis.
+        </p>
       </Card>
 
       <Card title="🗂️ Decision history">

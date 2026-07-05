@@ -13,6 +13,7 @@ import {
 } from "../engine/decision";
 import { adjustPlan, completionPct } from "../engine/adjust";
 import { recoveryScore, type RecoveryScore, type ScoreInput } from "../engine/score";
+import { computeInsights, type Insight, type InsightsInput } from "../engine/insights";
 import { phaseForDay } from "../data/plan";
 import type { AdjustedPlan } from "../types";
 
@@ -209,6 +210,33 @@ export function buildScoreInput(state: AppState, dateKey: string): ScoreInput {
 
 export function scoreFor(state: AppState, dateKey: string): RecoveryScore {
   return recoveryScore(buildScoreInput(state, dateKey));
+}
+
+export function buildInsightsInput(state: AppState, dateKey: string): InsightsInput {
+  const entries = sortedDayEntries(state).filter((d) => d.date <= dateKey);
+
+  const workVsSpike = entries
+    .filter((d) => d.evening)
+    .map((d) => ({ x: d.workBlocksCompleted, y: d.evening!.worstSpike }));
+
+  const walkingVsNextMorning: { x: number; y: number }[] = [];
+  for (const d of entries) {
+    if (!d.evening) continue;
+    const next = state.days[addDays(d.date, 1)];
+    if (next?.morning) {
+      walkingVsNextMorning.push({ x: d.evening.walkingMinutesCompleted, y: next.morning.pain });
+    }
+  }
+
+  const sleepVsPain = entries
+    .filter((d) => d.morning)
+    .map((d) => ({ x: d.morning!.sleepQuality, y: d.current?.pain ?? d.morning!.pain }));
+
+  return { workVsSpike, walkingVsNextMorning, sleepVsPain };
+}
+
+export function insightsFor(state: AppState, dateKey: string): Insight[] {
+  return computeInsights(buildInsightsInput(state, dateKey));
 }
 
 export function adjustedPlanFor(state: AppState, dateKey: string): AdjustedPlan {
