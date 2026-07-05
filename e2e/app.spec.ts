@@ -233,3 +233,34 @@ test.describe("desk timer", () => {
     await expect(page.locator(".badge.earned", { hasText: "PT-Ready Summary" })).toBeVisible();
   });
 });
+
+test.describe("library safety filter", () => {
+  test("a flared (BACK_OFF) day opens the library pre-filtered to safe exercises", async ({ page }) => {
+    await freshPage(page);
+    await setSlider(page, "current-pain", 7);
+    await expect(page.getByTestId("daily-decision")).toContainText("Back Off");
+
+    await page.getByTestId("nav-library").click();
+    await expect(page.getByTestId("flare-banner")).toBeVisible();
+    await expect(page.getByTestId("filter-safe-flared")).toHaveClass(/\bon\b/);
+    // Heat reset is safeWhenFlared; Clamshell is not — only the former should show.
+    await expect(page.getByTestId("lib-heat-reset")).toBeVisible();
+    await expect(page.getByTestId("lib-clamshell")).not.toBeVisible();
+
+    // The filter is a hint, not a gate — turning it off shows the full catalog again.
+    await page.getByTestId("filter-safe-flared").click();
+    await expect(page.getByTestId("flare-banner")).not.toBeVisible();
+    await expect(page.getByTestId("lib-clamshell")).toBeVisible();
+  });
+
+  test("a non-flared day opens the library with no banner and the filter off", async ({ page }) => {
+    await freshPage(page);
+    await setSlider(page, "current-pain", 2);
+    await expect(page.getByTestId("daily-decision")).not.toContainText("Back Off");
+
+    await page.getByTestId("nav-library").click();
+    await expect(page.getByTestId("flare-banner")).not.toBeVisible();
+    await expect(page.getByTestId("filter-safe-flared")).not.toHaveClass(/\bon\b/);
+    await expect(page.getByTestId("lib-clamshell")).toBeVisible();
+  });
+});

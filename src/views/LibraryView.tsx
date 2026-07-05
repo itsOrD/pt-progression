@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Element } from "../types";
+import type { Decision, Element } from "../types";
 import { EXERCISE_LIST } from "../data/exercises";
 import { Card } from "../ui/bits";
 import { ExerciseFigure } from "../ui/ExerciseFigure";
@@ -8,7 +8,7 @@ import { SOURCE_LIST } from "../data/sources";
 type Filter =
   | { kind: "element"; value: Element }
   | { kind: "subtype"; value: "stretch" | "strength" }
-  | { kind: "flag"; value: "safe-when-flared" | "avoid-if-spreading" };
+  | { kind: "flag"; value: "avoid-if-spreading" };
 
 const FILTERS: { label: string; filter: Filter }[] = [
   { label: "Relief", filter: { kind: "element", value: "relief" } },
@@ -20,25 +20,32 @@ const FILTERS: { label: string; filter: Filter }[] = [
   { label: "Desk reset", filter: { kind: "element", value: "desk-reset" } },
   { label: "Stretch", filter: { kind: "subtype", value: "stretch" } },
   { label: "Strength", filter: { kind: "subtype", value: "strength" } },
-  { label: "Safe when flared", filter: { kind: "flag", value: "safe-when-flared" } },
   { label: "Avoid if symptoms spread", filter: { kind: "flag", value: "avoid-if-spreading" } },
 ];
 
-export function LibraryView() {
+export function LibraryView({ todayDecision }: { todayDecision?: Decision } = {}) {
+  // On a flared day (back off / get checked), lead with what's safe right now.
+  const flaredDay = todayDecision === "BACK_OFF" || todayDecision === "GET_CHECKED";
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [safeFlaredOn, setSafeFlaredOn] = useState(flaredDay);
 
   const list = EXERCISE_LIST.filter((ex) => {
+    if (safeFlaredOn && ex.safeWhenFlared !== true) return false;
     if (!selected) return true;
     const f = FILTERS.find((f) => f.label === selected)!.filter;
     if (f.kind === "element") return ex.element === f.value;
     if (f.kind === "subtype") return ex.subtype === f.value;
-    if (f.value === "safe-when-flared") return ex.safeWhenFlared === true;
     return ex.avoidIfSpreading === true;
   });
 
   return (
     <>
+      {flaredDay && safeFlaredOn && (
+        <div className={`decision-banner decision-${todayDecision}`} data-testid="flare-banner">
+          Flared day — showing exercises that are safe right now. Tap the chip to see everything.
+        </div>
+      )}
       <Card title="📚 Exercise library">
         <p className="secondary" style={{ marginTop: 0 }}>
           Every exercise here trains a specific element. If one doesn't work for you, swap it for
@@ -47,6 +54,13 @@ export function LibraryView() {
         <div className="filter-row">
           <button className={`filter-chip ${selected === null ? "on" : ""}`} onClick={() => setSelected(null)}>
             All ({EXERCISE_LIST.length})
+          </button>
+          <button
+            className={`filter-chip ${safeFlaredOn ? "on" : ""}`}
+            data-testid="filter-safe-flared"
+            onClick={() => setSafeFlaredOn((v) => !v)}
+          >
+            Safe when flared
           </button>
           {FILTERS.map((f) => (
             <button
