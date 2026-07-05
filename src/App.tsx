@@ -35,13 +35,31 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [confetti, setConfetti] = useState(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Pending toasts wait their turn instead of clobbering whatever is
+  // currently on screen (e.g. an import confirmation followed by a badge).
+  const toastQueue = useRef<string[]>([]);
   const todayKey = toDateKey(new Date());
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2800);
+  const advanceToast = useCallback(() => {
+    const next = toastQueue.current.shift();
+    setToast(next ?? null);
+    toastTimer.current = next === undefined ? null : setTimeout(advanceToast, 2800);
   }, []);
+
+  const showToast = useCallback(
+    (msg: string) => {
+      if (toastTimer.current === null) {
+        setToast(msg);
+        toastTimer.current = setTimeout(advanceToast, 2800);
+        return;
+      }
+      // Cap the backlog so a burst of events can't queue forever; drop the
+      // oldest still-waiting toast to make room for the newest one.
+      if (toastQueue.current.length >= 4) toastQueue.current.shift();
+      toastQueue.current.push(msg);
+    },
+    [advanceToast]
+  );
 
   const setState = useCallback((fn: (s: AppState) => AppState) => {
     setStateRaw((s) => saveState(fn(s)));
