@@ -115,6 +115,12 @@ export function SettingsView(props: {
           checked={state.settings.vibration}
           onChange={(v) => setState((s) => ({ ...s, settings: { ...s.settings, vibration: v } }))}
         />
+        <Toggle
+          label="Sound on timer transitions"
+          checked={state.settings.sound}
+          testId="sound-toggle"
+          onChange={(v) => setState((s) => ({ ...s, settings: { ...s.settings, sound: v } }))}
+        />
       </Card>
 
       <Card title="💾 Your data" testId="data-card">

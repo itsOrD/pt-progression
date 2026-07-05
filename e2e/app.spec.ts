@@ -233,3 +233,19 @@ test.describe("desk timer", () => {
     await expect(page.locator(".badge.earned", { hasText: "PT-Ready Summary" })).toBeVisible();
   });
 });
+
+test.describe("settings", () => {
+  test("sound toggle defaults off and persists when enabled", async ({ page }) => {
+    await freshPage(page);
+    await page.getByTestId("nav-settings").click();
+    const soundToggle = page.getByTestId("sound-toggle");
+    await expect(soundToggle).not.toBeChecked();
+
+    await soundToggle.click();
+    await expect(soundToggle).toBeChecked();
+    const soundSetting = await page.evaluate(
+      () => JSON.parse(localStorage.getItem("pt-progression-v1")!).settings.sound
+    );
+    expect(soundSetting).toBe(true);
+  });
+});

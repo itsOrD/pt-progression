@@ -219,6 +219,7 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
           timer={state.timer}
           blocksToday={day.workBlocksCompleted}
           vibration={state.settings.vibration}
+          sound={state.settings.sound}
           onTimer={setTimer}
           onBlockComplete={() =>
             updateDay(todayKey, (d) => ({ ...d, workBlocksCompleted: d.workBlocksCompleted + 1 }))
