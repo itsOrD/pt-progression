@@ -47,6 +47,18 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
   const groups = ["relief", "movement", "strength", "desk"] as const;
   const shown = showBase ? base : plan;
 
+  // Desk-break suggestions: desk-survival tasks only — movement tasks include
+  // long walks and floor work that don't fit a 90-second break at the desk.
+  const breakTasks = plan.tasks
+    .filter((t) => t.group === "desk")
+    .map((t) => ({
+      taskId: t.taskId,
+      exerciseId: t.exerciseId,
+      name: getExercise(t.exerciseId).name,
+      dose: t.dose,
+      done: day.completedTaskIds.includes(t.taskId),
+    }));
+
   return (
     <>
       <div className={`decision-banner decision-${result.decision}`} data-testid="daily-decision">
@@ -222,6 +234,14 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
           onTimer={setTimer}
           onBlockComplete={() =>
             updateDay(todayKey, (d) => ({ ...d, workBlocksCompleted: d.workBlocksCompleted + 1 }))
+          }
+          breakTasks={breakTasks}
+          onBreakTaskDone={(taskId) =>
+            updateDay(todayKey, (d) =>
+              d.completedTaskIds.includes(taskId)
+                ? d
+                : { ...d, completedTaskIds: [...d.completedTaskIds, taskId] }
+            )
           }
         />
         <Toggle

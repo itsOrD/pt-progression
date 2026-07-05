@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { TimerState } from "../types";
+import { ExerciseFigure } from "./ExerciseFigure";
 
 export const WORK_MS = 25 * 60 * 1000;
 export const BREAK_MS = 90 * 1000;
@@ -11,12 +12,23 @@ function fmt(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+export type BreakTask = {
+  taskId: string;
+  exerciseId: string;
+  name: string;
+  dose: string;
+  done: boolean;
+};
+
 export function DeskTimer(props: {
   timer: TimerState;
   blocksToday: number;
   vibration: boolean;
   onTimer: (t: TimerState) => void;
   onBlockComplete: () => void;
+  /** Today's desk/movement tasks, offered up round-robin during breaks. */
+  breakTasks?: BreakTask[];
+  onBreakTaskDone?: (taskId: string) => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const transitioning = useRef(false);
@@ -80,6 +92,21 @@ export function DeskTimer(props: {
   const startBreak = () => props.onTimer({ ...props.timer, mode: "break", endsAt: Date.now() + BREAK_MS });
   const stop = () => props.onTimer({ ...props.timer, mode: "idle", endsAt: null });
 
+  // Rotate through today's desk tasks so repeated breaks don't all suggest the
+  // same exercise — starting at the rotation index, take the first not-done
+  // task (wrapping) so the "Did it" button is always actionable when shown.
+  const breakTasks = props.breakTasks ?? [];
+  const suggestion = ((): BreakTask | undefined => {
+    if (breakTasks.length === 0) return undefined;
+    const startIdx = props.timer.blocksCompletedTotal % breakTasks.length;
+    for (let i = 0; i < breakTasks.length; i++) {
+      const candidate = breakTasks[(startIdx + i) % breakTasks.length];
+      if (!candidate.done) return candidate;
+    }
+    return undefined;
+  })();
+  const allBreakTasksDone = breakTasks.length > 0 && suggestion === undefined;
+
   return (
     <div data-testid="desk-timer">
       {mode === "idle" && (
@@ -115,9 +142,35 @@ export function DeskTimer(props: {
           <div className="timer-display break" data-testid="timer-display">
             {fmt(remaining)}
           </div>
-          <p className="secondary" style={{ textAlign: "center", marginTop: 0 }}>
-            Movement break: stand, walk the room, a few pelvic tilts or glute squeezes.
-          </p>
+          {suggestion ? (
+            <div className="task-card" data-testid="break-suggestion">
+              <div className="task-detail" style={{ marginTop: 0 }}>
+                <ExerciseFigure exerciseId={suggestion.exerciseId} alt={suggestion.name} size={64} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="task-title" data-testid="break-suggestion-name">
+                    {suggestion.name}
+                  </div>
+                  <div className="task-dose">{suggestion.dose}</div>
+                </div>
+              </div>
+              <button
+                className="primary-btn"
+                style={{ marginTop: 8 }}
+                onClick={() => props.onBreakTaskDone?.(suggestion.taskId)}
+                data-testid="break-suggestion-done"
+              >
+                Did it ✓
+              </button>
+            </div>
+          ) : allBreakTasksDone ? (
+            <p className="secondary" style={{ textAlign: "center", marginTop: 0 }} data-testid="break-all-done">
+              Desk tasks all done today — stand, stretch, sip water.
+            </p>
+          ) : (
+            <p className="secondary" style={{ textAlign: "center", marginTop: 0 }}>
+              Movement break: stand, walk the room, a few pelvic tilts or glute squeezes.
+            </p>
+          )}
           <button className="primary-btn" onClick={start} data-testid="timer-skip-break">
             Done — start next block
           </button>
