@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { AppState } from "../types";
 import { Card, Toggle } from "../ui/bits";
 import { exportJson, importJson, encodeStateToHash } from "../state/storage";
+import { dayEntriesToCsv } from "../state/csv";
 import { scoreFor, sortedDayEntries } from "../state/selectors";
 import { activeRedFlags } from "../engine/decision";
 import { PHASES } from "../data/plan";
@@ -27,6 +28,18 @@ export function SettingsView(props: {
     a.click();
     URL.revokeObjectURL(url);
     showToast("Exported JSON");
+  };
+
+  const doExportCsv = () => {
+    const csv = dayEntriesToCsv(sortedDayEntries(state));
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `back-pt-data-${props.todayKey}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Exported CSV");
   };
 
   const doImport = async (file: File) => {
@@ -126,6 +139,10 @@ export function SettingsView(props: {
         </p>
         <button className="primary-btn" onClick={doExport} data-testid="export-json">
           Export JSON
+        </button>
+        <div style={{ height: 8 }} />
+        <button className="ghost-btn" onClick={doExportCsv} data-testid="export-csv">
+          Export CSV
         </button>
         <div style={{ height: 8 }} />
         <button className="ghost-btn" onClick={() => fileRef.current?.click()} data-testid="import-json">
