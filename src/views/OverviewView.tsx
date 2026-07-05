@@ -6,6 +6,7 @@ import {
   adjustedPlanFor,
   checkinStreak,
   decisionFor,
+  forecastFor,
   getDay,
   planStatusFor,
   scoreFor,
@@ -32,6 +33,7 @@ export function OverviewView(props: {
   const status = planStatusFor(state, todayKey);
   const streak = checkinStreak(state, todayKey);
   const serious = result.decision === "GET_CHECKED";
+  const forecast = forecastFor(state, todayKey);
 
   const nextAction = serious
     ? "Contact a clinician about the red-flag answers before continuing the plan."
@@ -104,6 +106,47 @@ export function OverviewView(props: {
           {score.explanation}
         </p>
       </Card>
+
+      {!state.graduatedOn && !serious && status.kind === "continue" && day.dayNumber >= 3 && (
+        <Card title="🛫 Graduation runway" testId="runway-card">
+          {!forecast.enoughData ? (
+            <p className="muted" style={{ margin: 0 }}>
+              Too early to project — keep logging (needs 3+ days of check-ins).
+            </p>
+          ) : (
+            <>
+              <p className="secondary" style={{ marginTop: 0 }} data-testid="runway-met-count">
+                {forecast.metCount} of {forecast.totalCount} criteria met
+              </p>
+              <table className="plain">
+                <tbody>
+                  {forecast.criteria.map((c) => (
+                    <tr key={c.label}>
+                      <td>{c.label}</td>
+                      <td className="muted">
+                        {c.met
+                          ? "met ✓"
+                          : c.projectedDay !== null
+                            ? `${c.current} now → ${c.target} target · ≈ Day ${c.projectedDay}`
+                            : `${c.current ?? "—"} now → ${c.target} target · no clear trend yet`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {forecast.projectedReadyDay !== null && (
+                <p className="secondary" data-testid="runway-summary">
+                  At the current pace the numeric criteria line up around Day {forecast.projectedReadyDay} —
+                  graduation is possible from Day 10.
+                </p>
+              )}
+              <p className="muted" style={{ marginBottom: 0 }}>
+                Straight-line guess from a few noisy points — your body doesn't do linear.
+              </p>
+            </>
+          )}
+        </Card>
+      )}
 
       {!serious && status.kind === "extend" && (
         <Card title="📆 Should you extend?" testId="extend-card">

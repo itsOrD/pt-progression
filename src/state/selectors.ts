@@ -2,6 +2,7 @@ import type { AppState, DayEntry, Decision } from "../types";
 import { EMPTY_RED_FLAGS } from "../types";
 import {
   activeRedFlags,
+  checkGraduation,
   decide,
   evaluatePlanStatus,
   formalHelpReasons,
@@ -13,6 +14,7 @@ import {
 } from "../engine/decision";
 import { adjustPlan, completionPct } from "../engine/adjust";
 import { recoveryScore, type RecoveryScore, type ScoreInput } from "../engine/score";
+import { forecastGraduation, type ForecastInput, type ForecastPoint, type ForecastResult } from "../engine/forecast";
 import { phaseForDay } from "../data/plan";
 import type { AdjustedPlan } from "../types";
 
@@ -209,6 +211,29 @@ export function buildScoreInput(state: AppState, dateKey: string): ScoreInput {
 
 export function scoreFor(state: AppState, dateKey: string): RecoveryScore {
   return recoveryScore(buildScoreInput(state, dateKey));
+}
+
+function history(entries: DayEntry[], pick: (d: DayEntry) => number | null | undefined): ForecastPoint[] {
+  return entries
+    .map((d) => ({ day: d.dayNumber, value: pick(d) ?? null }))
+    .filter((p): p is ForecastPoint => p.value !== null);
+}
+
+export function buildForecastInput(state: AppState, dateKey: string): ForecastInput {
+  const entries = sortedDayEntries(state).filter((d) => d.date <= dateKey);
+  const day = getDay(state, dateKey);
+  return {
+    dayNumber: day.dayNumber,
+    graduation: checkGraduation(buildGraduationInput(state, dateKey)),
+    painHistory: history(entries, (d) => d.current?.pain ?? d.morning?.pain),
+    spikeHistory: history(entries, (d) => d.evening?.worstSpike),
+    sittingHistory: history(entries, (d) => d.evening?.sittingToleranceMinutes),
+    walkingHistory: history(entries, (d) => d.evening?.walkingToleranceMinutes),
+  };
+}
+
+export function forecastFor(state: AppState, dateKey: string): ForecastResult {
+  return forecastGraduation(buildForecastInput(state, dateKey));
 }
 
 export function adjustedPlanFor(state: AppState, dateKey: string): AdjustedPlan {
