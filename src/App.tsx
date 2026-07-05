@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, DayEntry, ExtensionKind } from "./types";
 import { defaultState, loadState, readHashBackup, saveState, writeHashBackup, STORAGE_KEY } from "./state/storage";
-import { decisionFor, emptyDay, evaluateBadges, getDay, toDateKey, dayNumberFor } from "./state/selectors";
+import { decisionFor, emptyDay, evaluateBadges, getDay, recomputeDecisions, toDateKey, dayNumberFor } from "./state/selectors";
 import { BADGE_MAP } from "./data/badges";
 import { OverviewView } from "./views/OverviewView";
 import { DailyView } from "./views/DailyView";
@@ -52,6 +52,20 @@ export default function App() {
       setState((s) => {
         const existing = s.days[dateKey] ?? emptyDay(dateKey, dayNumberFor(dateKey, s.startDate));
         return { ...s, days: { ...s.days, [dateKey]: fn(existing) } };
+      });
+    },
+    [setState]
+  );
+
+  // Editing a past day's check-ins would otherwise leave its (and later
+  // days') stored decision stale — recompute in the same save so history
+  // stays honest immediately, not just after today's decision effect runs.
+  const editPastDay = useCallback(
+    (dateKey: string, fn: (d: DayEntry) => DayEntry) => {
+      setState((s) => {
+        const existing = s.days[dateKey] ?? emptyDay(dateKey, dayNumberFor(dateKey, s.startDate));
+        const applied = { ...s, days: { ...s.days, [dateKey]: fn(existing) } };
+        return recomputeDecisions(applied, dateKey);
       });
     },
     [setState]
@@ -159,7 +173,7 @@ export default function App() {
       )}
       {tab === "library" && <LibraryView />}
       {tab === "flow" && <FlowchartView state={state} todayKey={todayKey} />}
-      {tab === "progress" && <ProgressView state={state} todayKey={todayKey} />}
+      {tab === "progress" && <ProgressView state={state} todayKey={todayKey} updateDay={editPastDay} />}
       {tab === "settings" && (
         <SettingsView
           state={state}

@@ -727,6 +727,13 @@ table.plain th {
   color: var(--text-muted);
   font-weight: 600;
 }
+.editable-row {
+  cursor: pointer;
+}
+.editable-row:hover,
+.editable-row:focus-visible {
+  background: var(--surface-1);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .task-check.checked,

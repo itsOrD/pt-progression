@@ -97,6 +97,26 @@ export function decisionFor(state: AppState, dateKey: string): DecisionResult {
   return decide(buildDecisionInput(state, dateKey));
 }
 
+/**
+ * Editing a past day's check-ins can change its own stored decision — and
+ * the decision engine also looks back up to 2 prior days for sitting/
+ * standing tolerance trends, so later days' stored decisions can go stale
+ * too. Walk forward from the edited date, oldest → newest, threading the
+ * updated state through each step so later days see the corrected data.
+ */
+export function recomputeDecisions(state: AppState, fromDate: string): AppState {
+  const affectedDates = sortedDayEntries(state)
+    .filter((d) => d.date >= fromDate)
+    .map((d) => d.date);
+  return affectedDates.reduce((s, date) => {
+    const day = getDay(s, date);
+    const hasCheckin = !!(day.morning || day.current || day.evening);
+    const decision = hasCheckin ? decisionFor(s, date).decision : undefined;
+    if (day.decision === decision) return s;
+    return { ...s, days: { ...s.days, [date]: { ...day, decision } } };
+  }, state);
+}
+
 export function greenStreak(state: AppState, throughDate: string): number {
   const entries = sortedDayEntries(state).filter((d) => d.date <= throughDate);
   let streak = 0;
