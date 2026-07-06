@@ -95,6 +95,25 @@ describe("decide — HOLD", () => {
   });
 });
 
+// Band boundaries are checked with ">=" rather than "===" so that fractional
+// inputs (not produced by the UI slider, but not ruled out at this layer
+// either — see clampScore.ts) land in the same band as the nearest integer,
+// instead of silently falling through every named band into DO_MINIMUM.
+describe("decide — fractional band edges", () => {
+  it("worstSpike 7.5 falls in the [7, 8) HOLD band, same as integer 7", () => {
+    expect(decide(input({ worstSpike: 7.5 })).decision).toBe("HOLD");
+  });
+  it("worstSpike 6.5 stays below the HOLD band (spikeOk cutoff is <= 6)", () => {
+    expect(decide(input({ worstSpike: 6.5 })).decision).toBe("DO_MINIMUM");
+  });
+  it("currentPain 5.5 falls in the [5, 6) HOLD band, same as integer 5", () => {
+    expect(decide(input({ currentPain: 5.5 })).decision).toBe("HOLD");
+  });
+  it("currentPain 4.5 stays below the HOLD band (painOk cutoff is <= 4)", () => {
+    expect(decide(input({ currentPain: 4.5 })).decision).toBe("DO_MINIMUM");
+  });
+});
+
 describe("decide — ADVANCE / DO_MINIMUM", () => {
   it("advances on a green day", () => {
     const r = decide(input());

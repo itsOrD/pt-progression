@@ -97,9 +97,28 @@ export function decide(input: DecisionInput): DecisionResult {
   flowPath.push("hold-gate");
 
   // 3. HOLD
+  //
+  // Band table for worstSpike / currentPain (both are 0-10, but inputs are not
+  // guaranteed to be integers at this layer — see clampScore.ts for the UI-side
+  // guard). Each row's upper bound is the lower bound of the row above it; the
+  // BACK_OFF checks above already returned early, so reaching here guarantees
+  // worstSpike < 8 and currentPain < 6.
+  //   worstSpike:   [8, 10] -> BACK_OFF (handled above, before this point)
+  //                 [7, 8)  -> HOLD (this block)
+  //                 [0, 7)  -> no reason here (advance-gate's spikeOk covers <= 6)
+  //   currentPain:  [6, 10] -> BACK_OFF (handled above, before this point)
+  //                 [5, 6)  -> HOLD (this block)
+  //                 [0, 5)  -> no reason here (advance-gate's painOk covers <= 4)
+  //
+  // These were previously exact-equality checks (`=== 7`, `=== 5`), which only
+  // matched integers hitting that exact value — a fractional 7.3 or 5.6 would
+  // fall through both this block AND the advance-gate's <= 6 / <= 4 checks,
+  // silently landing in DO_MINIMUM with no named reason. Using ">=" (with the
+  // upper bound already guaranteed by the earlier return) closes that gap
+  // without changing which branch any integer 0-10 input hits.
   const hold: string[] = [];
-  if (input.worstSpike === 7) hold.push("Worst spike is 7/10");
-  if (input.currentPain === 5) hold.push("Pain now is 5/10");
+  if (input.worstSpike !== null && input.worstSpike >= 7) hold.push("Worst spike is 7/10 or higher");
+  if (input.currentPain !== null && input.currentPain >= 5) hold.push("Pain now is 5/10 or higher");
   if (input.abdomenPressure !== null && input.abdomenPressure >= 4 && input.abdomenPressure <= 6) {
     hold.push(`Abdominal pressure ${input.abdomenPressure}/10 (4–6 zone — keep watching this)`);
   }

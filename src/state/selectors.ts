@@ -1,5 +1,6 @@
 import type { AppState, DayEntry, Decision } from "../types";
 import { EMPTY_RED_FLAGS } from "../types";
+import type { BadgeId } from "../data/badges";
 import {
   activeRedFlags,
   decide,
@@ -226,9 +227,9 @@ export function basePlanFor(state: AppState, dateKey: string): AdjustedPlan {
 
 // ------------------------------------------------------------------- badges
 
-export function evaluateBadges(state: AppState, dateKey: string): string[] {
-  const earned: string[] = [];
-  const has = (id: string) => id in state.badges || earned.includes(id);
+export function evaluateBadges(state: AppState, dateKey: string): BadgeId[] {
+  const earned: BadgeId[] = [];
+  const has = (id: BadgeId) => id in state.badges || earned.includes(id);
   const entries = sortedDayEntries(state);
   const day = getDay(state, dateKey);
   const anyCheckin = entries.some((d) => d.morning || d.current || d.evening);
