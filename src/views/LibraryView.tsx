@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Element } from "../types";
+import type { Decision, Element } from "../types";
 import { EXERCISE_LIST } from "../data/exercises";
 import { Card } from "../ui/bits";
 import { ExerciseFigure } from "../ui/ExerciseFigure";
@@ -8,7 +8,7 @@ import { SOURCE_LIST } from "../data/sources";
 type Filter =
   | { kind: "element"; value: Element }
   | { kind: "subtype"; value: "stretch" | "strength" }
-  | { kind: "flag"; value: "safe-when-flared" | "avoid-if-spreading" };
+  | { kind: "flag"; value: "avoid-if-spreading" };
 
 const FILTERS: { label: string; filter: Filter }[] = [
   { label: "Relief", filter: { kind: "element", value: "relief" } },
@@ -20,33 +20,104 @@ const FILTERS: { label: string; filter: Filter }[] = [
   { label: "Desk reset", filter: { kind: "element", value: "desk-reset" } },
   { label: "Stretch", filter: { kind: "subtype", value: "stretch" } },
   { label: "Strength", filter: { kind: "subtype", value: "strength" } },
-  { label: "Safe when flared", filter: { kind: "flag", value: "safe-when-flared" } },
   { label: "Avoid if symptoms spread", filter: { kind: "flag", value: "avoid-if-spreading" } },
 ];
 
-export function LibraryView() {
+function flareDismissKey(todayKey: string): string {
+  return `pt-progression-flare-dismissed:${todayKey}`;
+}
+
+// Read/write the "flare filter dismissed" flag via sessionStorage rather than
+// localStorage: dismissal should only stick for the rest of today's browsing
+// session (per tab), not follow the user forever — a new day gets a new key
+// anyway, but sessionStorage also naturally clears when the tab/session ends,
+// so we don't need to prune stale per-day keys ourselves. Wrapped in
+// try/catch since storage can throw (or be unavailable) in private mode.
+
+function readFlareDismissed(todayKey: string): boolean {
+  try {
+    return sessionStorage.getItem(flareDismissKey(todayKey)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeFlareDismissed(todayKey: string, dismissed: boolean): void {
+  try {
+    if (dismissed) sessionStorage.setItem(flareDismissKey(todayKey), "1");
+    else sessionStorage.removeItem(flareDismissKey(todayKey));
+  } catch {
+    // Private-mode / storage-disabled browsers — dismissal just won't stick.
+  }
+}
+
+export function LibraryView({
+  todayDecision,
+  todayKey,
+}: { todayDecision?: Decision; todayKey?: string } = {}) {
+  // On a flared day (back off / get checked), lead with what's safe right now —
+  // unless the user already dismissed that filter earlier today.
+  const flaredDay = todayDecision === "BACK_OFF" || todayDecision === "GET_CHECKED";
+  const dismissedToday = flaredDay && !!todayKey && readFlareDismissed(todayKey);
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [safeFlaredOn, setSafeFlaredOn] = useState(flaredDay && !dismissedToday);
+
+  // Remember a dismissal (toggle turned off, or "All" clicked) so LibraryView —
+  // which remounts on every tab switch — doesn't silently re-impose the filter.
+  function rememberDismissal(dismissed: boolean) {
+    if (flaredDay && todayKey) writeFlareDismissed(todayKey, dismissed);
+  }
+
+  function toggleSafeFlared() {
+    setSafeFlaredOn((v) => {
+      const next = !v;
+      rememberDismissal(!next);
+      return next;
+    });
+  }
+
+  function clearAllFilters() {
+    setSelected(null);
+    setSafeFlaredOn(false);
+    rememberDismissal(true);
+  }
 
   const list = EXERCISE_LIST.filter((ex) => {
+    if (safeFlaredOn && ex.safeWhenFlared !== true) return false;
     if (!selected) return true;
     const f = FILTERS.find((f) => f.label === selected)!.filter;
     if (f.kind === "element") return ex.element === f.value;
     if (f.kind === "subtype") return ex.subtype === f.value;
-    if (f.value === "safe-when-flared") return ex.safeWhenFlared === true;
     return ex.avoidIfSpreading === true;
   });
 
   return (
     <>
+      {flaredDay && safeFlaredOn && (
+        <div className={`decision-banner decision-${todayDecision}`} data-testid="flare-banner">
+          Flared day — showing exercises that are safe right now. Tap the chip to see everything.
+        </div>
+      )}
       <Card title="📚 Exercise library">
         <p className="secondary" style={{ marginTop: 0 }}>
           Every exercise here trains a specific element. If one doesn't work for you, swap it for
           another with the same element — the plan cares about the element, not the exercise.
         </p>
         <div className="filter-row">
-          <button className={`filter-chip ${selected === null ? "on" : ""}`} onClick={() => setSelected(null)}>
+          <button
+            className={`filter-chip ${selected === null && !safeFlaredOn ? "on" : ""}`}
+            data-testid="filter-all"
+            onClick={clearAllFilters}
+          >
             All ({EXERCISE_LIST.length})
+          </button>
+          <button
+            className={`filter-chip ${safeFlaredOn ? "on" : ""}`}
+            data-testid="filter-safe-flared"
+            onClick={toggleSafeFlared}
+          >
+            Safe when flared
           </button>
           {FILTERS.map((f) => (
             <button

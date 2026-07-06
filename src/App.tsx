@@ -157,7 +157,9 @@ export default function App() {
           setTimer={(t) => setState((s) => ({ ...s, timer: t }))}
         />
       )}
-      {tab === "library" && <LibraryView />}
+      {tab === "library" && (
+        <LibraryView todayDecision={decisionFor(state, todayKey).decision} todayKey={todayKey} />
+      )}
       {tab === "flow" && <FlowchartView state={state} todayKey={todayKey} />}
       {tab === "progress" && <ProgressView state={state} todayKey={todayKey} />}
       {tab === "settings" && (
