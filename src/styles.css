@@ -548,6 +548,25 @@ input[type="checkbox"].switch:checked::after {
   align-items: center;
   margin: 4px 0;
 }
+.flow-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--grid);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.flow-node.terminal-active .flow-count {
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+.flow-count-legend {
+  margin: 8px 0 0;
+  text-align: center;
+}
 
 /* ------------------------------------------------------------------ charts */
 

@@ -114,6 +114,34 @@ export function decisionHistory(state: AppState): { date: string; dayNumber: num
     .map((d) => ({ date: d.date, dayNumber: d.dayNumber, decision: d.decision! }));
 }
 
+/** Number of logged days (days with a recorded decision) folded into `recentDecisionCounts`. */
+export const RECENT_DECISION_WINDOW = 10;
+
+/**
+ * Counts each Decision across the most recent `limit` LOGGED days — days that
+ * already carry a decision snapshot, ordered by date — not the last `limit`
+ * calendar days. Days without a decision (never checked in) are skipped, so a
+ * gap in logging doesn't shrink the window below `limit` logged days.
+ */
+export function recentDecisionCounts(
+  state: AppState,
+  limit: number = RECENT_DECISION_WINDOW
+): Record<Decision, number> {
+  const counts: Record<Decision, number> = {
+    GET_CHECKED: 0,
+    BACK_OFF: 0,
+    HOLD: 0,
+    DO_MINIMUM: 0,
+    ADVANCE: 0,
+    GRADUATE: 0,
+    EXTEND: 0,
+  };
+  for (const entry of decisionHistory(state).slice(-limit)) {
+    counts[entry.decision]++;
+  }
+  return counts;
+}
+
 function latest<T>(entries: DayEntry[], pick: (d: DayEntry) => T | null | undefined): T | null {
   for (let i = entries.length - 1; i >= 0; i--) {
     const v = pick(entries[i]);
