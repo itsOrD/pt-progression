@@ -420,6 +420,100 @@ input[type="checkbox"].switch:checked::after {
   margin-top: -6px;
 }
 
+/* ------------------------------------------------------------ clinician report */
+
+.report-meta {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 10px;
+}
+.report-footer {
+  margin-top: 16px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin: 4px 0 14px;
+}
+.report-table th,
+.report-table td {
+  text-align: left;
+  padding: 4px 6px;
+  border: 1px solid var(--grid);
+  font-variant-numeric: tabular-nums;
+}
+.report-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Print only the report content, full-bleed and unclipped, regardless of the
+   on-screen modal's scroll/height limits or the OS color-scheme preference. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #clinician-report,
+  #clinician-report * {
+    visibility: visible;
+  }
+  #clinician-report {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    max-height: none;
+    overflow: visible;
+    margin: 0;
+    padding: 0.4in;
+    background: #fff;
+    color: #000;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  #clinician-report h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+    color: #000;
+  }
+  #clinician-report h3 {
+    font-size: 1rem;
+    margin: 16px 0 6px;
+    border-bottom: 1px solid #000;
+    padding-bottom: 2px;
+    color: #000;
+  }
+  #clinician-report p,
+  #clinician-report li,
+  #clinician-report td,
+  #clinician-report th {
+    color: #000;
+  }
+  #clinician-report .report-meta,
+  #clinician-report .report-footer {
+    color: #333;
+  }
+  #clinician-report table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #clinician-report th,
+  #clinician-report td {
+    border: 1px solid #000;
+  }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: none;
+  }
+  .modal {
+    max-height: none;
+    overflow: visible;
+    background: #fff;
+  }
+}
+
 /* ------------------------------------------------------------------ badges */
 
 .badge-grid {

@@ -233,3 +233,82 @@ test.describe("desk timer", () => {
     await expect(page.locator(".badge.earned", { hasText: "PT-Ready Summary" })).toBeVisible();
   });
 });
+
+test.describe("printable clinician report", () => {
+  test("opens from Settings and renders the decision table plus the red-flag record", async ({ page }) => {
+    await freshPage(page);
+    const today = await page.evaluate(() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    });
+    const yesterday = await page.evaluate((t) => {
+      const [y, m, d] = t.split("-").map(Number);
+      const dt = new Date(y, m - 1, d - 1);
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    }, today);
+    const emptyRedFlags = {
+      legWeakness: false,
+      saddleNumbness: false,
+      troubleWalking: false,
+      bladderBowelChange: false,
+      troubleStartingUrine: false,
+      feverChills: false,
+      vomiting: false,
+      bloodUrineStool: false,
+      worseningAbdominalPain: false,
+    };
+    const state = {
+      version: 1,
+      startDate: yesterday,
+      phaseOverride: null,
+      days: {
+        [yesterday]: {
+          date: yesterday,
+          dayNumber: 1,
+          morning: { pain: 6, stiffness: 4, worseThanYesterday: false, sleepQuality: 5 },
+          current: { pain: 6, abdomenPressure: 2 },
+          redFlags: { ...emptyRedFlags, saddleNumbness: true },
+          completedTaskIds: [],
+          swaps: {},
+          workBlocksCompleted: 0,
+          decision: "GET_CHECKED",
+        },
+        [today]: {
+          date: today,
+          dayNumber: 2,
+          morning: { pain: 3, stiffness: 2, worseThanYesterday: false, sleepQuality: 7 },
+          current: { pain: 3, abdomenPressure: 1 },
+          redFlags: { ...emptyRedFlags },
+          completedTaskIds: [],
+          swaps: {},
+          workBlocksCompleted: 0,
+          decision: "ADVANCE",
+        },
+      },
+      badges: {},
+      extension: null,
+      graduatedOn: null,
+      timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+      settings: { vibration: true, sound: false },
+      lastSavedAt: null,
+    };
+
+    await page.getByTestId("nav-settings").click();
+    await page.getByTestId("import-file").setInputFiles({
+      name: "backup.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(state)),
+    });
+    await expect(page.getByTestId("toast")).toContainText("imported");
+
+    await page.getByTestId("print-report-btn").click();
+    await expect(page.getByTestId("clinician-report")).toBeVisible();
+
+    const rows = page.getByTestId("report-row");
+    await expect(rows).toHaveCount(2);
+    await expect(rows.first()).toContainText("Get Checked");
+    await expect(rows.last()).toContainText("Advance");
+
+    await expect(page.getByTestId("report-red-flags")).toContainText("Saddle or groin numbness");
+  });
+});

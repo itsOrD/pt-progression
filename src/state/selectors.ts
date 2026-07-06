@@ -292,3 +292,87 @@ export function checkinStreak(state: AppState, todayKey: string): number {
   }
   return streak;
 }
+
+// ------------------------------------------------------------ printable report
+
+export type ClinicianReportRow = {
+  date: string;
+  dayNumber: number;
+  morningPain: number | null;
+  worstSpike: number | null;
+  decision: Decision | null;
+};
+
+export type RedFlagDay = {
+  date: string;
+  dayNumber: number;
+  flags: string[];
+};
+
+export type ClinicianReportTrend = {
+  label: string;
+  unit: string;
+  first: number | null;
+  latest: number | null;
+};
+
+export type ClinicianReportData = {
+  generatedOn: string;
+  startDate: string;
+  dayCount: number;
+  rows: ClinicianReportRow[];
+  redFlagDays: RedFlagDay[];
+  trends: ClinicianReportTrend[];
+  phaseNumber: number;
+  phaseName: string;
+  planStatus: PlanStatus;
+  graduatedOn: string | null;
+};
+
+/** Days (oldest → newest) where at least one red flag was reported. */
+export function redFlagDays(state: AppState): RedFlagDay[] {
+  return sortedDayEntries(state)
+    .map((d) => ({ date: d.date, dayNumber: d.dayNumber, flags: activeRedFlags(d.redFlags) }))
+    .filter((d) => d.flags.length > 0);
+}
+
+/** Everything a printable clinician report needs, built from existing selectors. */
+export function buildClinicianReportData(state: AppState, dateKey: string): ClinicianReportData {
+  const entries = sortedDayEntries(state);
+  const day = getDay(state, dateKey);
+  const phase = phaseForDay(day.dayNumber, state.phaseOverride);
+
+  const trend = (
+    label: string,
+    unit: string,
+    pick: (d: DayEntry) => number | null | undefined
+  ): ClinicianReportTrend => ({
+    label,
+    unit,
+    first: earliest(entries, pick),
+    latest: latest(entries, pick),
+  });
+
+  return {
+    generatedOn: dateKey,
+    startDate: state.startDate,
+    dayCount: entries.length,
+    rows: entries.map((d) => ({
+      date: d.date,
+      dayNumber: d.dayNumber,
+      morningPain: d.morning?.pain ?? null,
+      worstSpike: d.evening?.worstSpike ?? null,
+      decision: d.decision ?? null,
+    })),
+    redFlagDays: redFlagDays(state),
+    trends: [
+      trend("Morning pain (0-10)", "", (d) => d.morning?.pain),
+      trend("Sitting tolerance", " min", (d) => d.evening?.sittingToleranceMinutes),
+      trend("Walking minutes", " min", (d) => d.evening?.walkingMinutesCompleted),
+    ],
+    phaseNumber: phase.number,
+    phaseName: phase.name,
+    planStatus: planStatusFor(state, dateKey),
+    graduatedOn: state.graduatedOn,
+  };
+}
