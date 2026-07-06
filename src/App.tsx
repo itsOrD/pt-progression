@@ -35,13 +35,41 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [confetti, setConfetti] = useState(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Pending toasts wait their turn instead of clobbering whatever is
+  // currently on screen (e.g. an import confirmation followed by a badge).
+  const toastQueue = useRef<string[]>([]);
   const todayKey = toDateKey(new Date());
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2800);
+  const advanceToast = useCallback(() => {
+    const next = toastQueue.current.shift();
+    setToast(next ?? null);
+    toastTimer.current = next === undefined ? null : setTimeout(advanceToast, 2800);
   }, []);
+
+  const showToast = useCallback(
+    (msg: string) => {
+      if (toastTimer.current === null) {
+        setToast(msg);
+        toastTimer.current = setTimeout(advanceToast, 2800);
+        return;
+      }
+      // Cap the backlog so a burst of events can't queue forever; drop the
+      // oldest still-waiting toast to make room for the newest one.
+      if (toastQueue.current.length >= 4) toastQueue.current.shift();
+      toastQueue.current.push(msg);
+    },
+    [advanceToast]
+  );
+
+  // Clear any pending toast timer/backlog on unmount so a burst of queued
+  // toasts can't keep calling setState after the component is gone.
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastQueue.current = [];
+    },
+    []
+  );
 
   const setState = useCallback((fn: (s: AppState) => AppState) => {
     setStateRaw((s) => saveState(fn(s)));
@@ -123,6 +151,13 @@ export default function App() {
   };
 
   const onReset = () => {
+    // Flush any queued/showing celebratory toasts first so a stale "Badge
+    // earned" can't play alongside (or after) the erase confirmation.
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = null;
+    toastQueue.current = [];
+    setToast(null);
+
     localStorage.removeItem(STORAGE_KEY);
     const url = new URL(window.location.href);
     url.hash = "";

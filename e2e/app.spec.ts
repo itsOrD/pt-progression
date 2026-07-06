@@ -197,6 +197,61 @@ test.describe("export / import", () => {
     await page.getByTestId("nav-today").click();
     await expect(page.getByTestId("daily-decision")).toContainText("Back Off");
   });
+
+  test("import confirmation plays before a queued badge toast", async ({ page }) => {
+    await freshPage(page);
+    const today = await page.evaluate(() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    });
+    // Same fixture shape as "import replaces state": an empty badges map plus
+    // a checked-in day means the import also fires the first-checkin badge,
+    // which should queue behind the import toast rather than clobber it.
+    const state = {
+      version: 1,
+      startDate: today,
+      phaseOverride: null,
+      days: {
+        [today]: {
+          date: today,
+          dayNumber: 1,
+          morning: { pain: 7, stiffness: 5, worseThanYesterday: false, sleepQuality: 4 },
+          current: { pain: 7, abdomenPressure: 1 },
+          redFlags: {
+            legWeakness: false,
+            saddleNumbness: false,
+            troubleWalking: false,
+            bladderBowelChange: false,
+            troubleStartingUrine: false,
+            feverChills: false,
+            vomiting: false,
+            bloodUrineStool: false,
+            worseningAbdominalPain: false,
+          },
+          completedTaskIds: [],
+          swaps: {},
+          workBlocksCompleted: 0,
+        },
+      },
+      badges: {},
+      extension: null,
+      graduatedOn: null,
+      timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+      settings: { vibration: true, sound: false },
+      lastSavedAt: null,
+    };
+    await page.getByTestId("nav-settings").click();
+    await page.getByTestId("import-file").setInputFiles({
+      name: "backup.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(state)),
+    });
+
+    // The import confirmation shows first...
+    await expect(page.getByTestId("toast")).toContainText("Data imported");
+    // ...and only once it expires (~2.8s) does the queued badge toast play.
+    await expect(page.getByTestId("toast")).toContainText("First Check-In", { timeout: 4000 });
+  });
 });
 
 test.describe("desk timer", () => {
