@@ -53,7 +53,9 @@ export function getDay(state: AppState, dateKey: string): DayEntry {
 }
 
 export function sortedDayEntries(state: AppState): DayEntry[] {
-  return Object.values(state.days).sort((a, b) => a.date.localeCompare(b.date));
+  return Object.values(state.days)
+    .filter((d): d is DayEntry => typeof d?.date === "string")
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** Days strictly before the given date, sorted oldest → newest. */
