@@ -128,6 +128,9 @@ test.describe("persistence", () => {
     await page.waitForFunction(() => location.hash.startsWith("#backup="));
 
     await page.evaluate(() => localStorage.clear());
+    // Restoring from a link now asks for confirmation before adopting the
+    // backup — accept it, since this test IS the legitimate-restore case.
+    page.once("dialog", (dialog) => dialog.accept());
     await page.reload();
     await expect(page.getByTestId("daily-decision")).toContainText("Back Off");
   });
