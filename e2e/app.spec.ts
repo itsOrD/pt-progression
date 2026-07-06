@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshPage, setSlider } from "./helpers";
+import { freshPage, seedYesterdayMorningPain, setSlider } from "./helpers";
 
 test.describe("navigation", () => {
   test("all six tabs render their views", async ({ page }) => {
@@ -31,11 +31,13 @@ test.describe("navigation", () => {
 test.describe("sliders and decisions", () => {
   test("green inputs produce ADVANCE and the flowchart highlights it", async ({ page }) => {
     await freshPage(page);
+    await seedYesterdayMorningPain(page, 6);
     await setSlider(page, "morning-pain", 3);
     await setSlider(page, "current-pain", 3);
     await setSlider(page, "abdomen-pressure", 1);
 
     await expect(page.getByTestId("daily-decision")).toContainText("Advance");
+    await expect(page.getByTestId("pain-trend-callout")).toContainText("Down from 6 yesterday");
 
     await page.getByTestId("nav-flow").click();
     await expect(page.getByTestId("flow-advance")).toHaveClass(/terminal-active/);
