@@ -5,6 +5,7 @@ import { ExerciseCard } from "../ui/ExerciseCard";
 import { DeskTimer } from "../ui/DeskTimer";
 import { DECISION_META } from "../ui/charts";
 import { RED_FLAG_LABELS } from "../engine/decision";
+import { clampScore } from "../engine/clampScore";
 import { adjustedPlanFor, basePlanFor, decisionFor, getDay } from "../state/selectors";
 import { getExercise } from "../data/exercises";
 
@@ -82,7 +83,7 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
             updateDay(todayKey, (d) => ({
               ...d,
               morning: {
-                pain: v,
+                pain: clampScore(v),
                 stiffness: d.morning?.stiffness ?? 3,
                 worseThanYesterday: d.morning?.worseThanYesterday ?? false,
                 sleepQuality: d.morning?.sleepQuality ?? 5,
@@ -95,12 +96,16 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
             <Slider
               label="Stiffness"
               value={day.morning.stiffness}
-              onChange={(v) => updateDay(todayKey, (d) => ({ ...d, morning: { ...d.morning!, stiffness: v } }))}
+              onChange={(v) =>
+                updateDay(todayKey, (d) => ({ ...d, morning: { ...d.morning!, stiffness: clampScore(v) } }))
+              }
             />
             <Slider
               label="Sleep quality"
               value={day.morning.sleepQuality}
-              onChange={(v) => updateDay(todayKey, (d) => ({ ...d, morning: { ...d.morning!, sleepQuality: v } }))}
+              onChange={(v) =>
+                updateDay(todayKey, (d) => ({ ...d, morning: { ...d.morning!, sleepQuality: clampScore(v) } }))
+              }
             />
             <Toggle
               label="Worse than yesterday morning?"
@@ -123,7 +128,7 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
           onChange={(v) =>
             updateDay(todayKey, (d) => ({
               ...d,
-              current: { pain: v, abdomenPressure: d.current?.abdomenPressure ?? 0 },
+              current: { pain: clampScore(v), abdomenPressure: d.current?.abdomenPressure ?? 0 },
             }))
           }
         />
@@ -134,7 +139,7 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
           onChange={(v) =>
             updateDay(todayKey, (d) => ({
               ...d,
-              current: { pain: d.current?.pain ?? d.morning?.pain ?? 3, abdomenPressure: v },
+              current: { pain: d.current?.pain ?? d.morning?.pain ?? 3, abdomenPressure: clampScore(v) },
             }))
           }
         />
@@ -258,12 +263,17 @@ function EveningForm(props: { evening: EveningReview; onChange: (p: Partial<Even
   const e = props.evening;
   return (
     <>
-      <Slider label="Worst pain spike today" value={e.worstSpike} testId="worst-spike" onChange={(v) => props.onChange({ worstSpike: v })} />
+      <Slider
+        label="Worst pain spike today"
+        value={e.worstSpike}
+        testId="worst-spike"
+        onChange={(v) => props.onChange({ worstSpike: clampScore(v) })}
+      />
       <Slider
         label="Pain increase right after exercise"
         value={e.postExercisePainIncrease}
         testId="post-exercise-increase"
-        onChange={(v) => props.onChange({ postExercisePainIncrease: v })}
+        onChange={(v) => props.onChange({ postExercisePainIncrease: clampScore(v) })}
       />
       <Toggle
         label="Still elevated 1 hour after exercise?"

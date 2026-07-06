@@ -1,3 +1,5 @@
+import type { BadgeId } from "./data/badges";
+
 export type Element =
   | "relief"
   | "walking"
@@ -138,9 +140,9 @@ export type Settings = {
 export type AppState = {
   version: 1;
   startDate: string; // YYYY-MM-DD
-  phaseOverride: number | null; // 1-4, or null = automatic
+  phaseOverride: 1 | 2 | 3 | 4 | null; // 1-4, or null = automatic
   days: Record<string, DayEntry>;
-  badges: Record<string, string>; // badgeId -> ISO date earned
+  badges: Partial<Record<BadgeId, string>>; // badgeId -> ISO date earned
   extension: ExtensionState | null;
   graduatedOn: string | null;
   timer: TimerState;

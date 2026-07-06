@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, DayEntry, ExtensionKind } from "./types";
 import { defaultState, loadState, readHashBackup, saveState, writeHashBackup, STORAGE_KEY } from "./state/storage";
 import { decisionFor, emptyDay, evaluateBadges, getDay, toDateKey, dayNumberFor } from "./state/selectors";
-import { BADGE_MAP } from "./data/badges";
+import { BADGE_MAP, type BadgeId } from "./data/badges";
 import { OverviewView } from "./views/OverviewView";
 import { DailyView } from "./views/DailyView";
 import { LibraryView } from "./views/LibraryView";
@@ -11,6 +11,9 @@ import { ProgressView } from "./views/ProgressView";
 import { SettingsView } from "./views/SettingsView";
 
 type Tab = "overview" | "today" | "library" | "flow" | "progress" | "settings";
+
+// Typed so a typo'd badge id here fails to compile instead of silently never awarding the badge.
+const PT_READY_SUMMARY_BADGE: BadgeId = "pt-ready-summary";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "overview", label: "Overview", icon: "🏠" },
@@ -101,7 +104,7 @@ export default function App() {
 
   const onExtend = (kind: ExtensionKind) => {
     const day = getDay(state, todayKey);
-    const phaseByKind: Record<ExtensionKind, number> = {
+    const phaseByKind: Record<ExtensionKind, 1 | 2 | 3 | 4> = {
       "repeat-stabilize": 2,
       "slow-progression": 3,
       "walking-focus": 2,
@@ -169,9 +172,9 @@ export default function App() {
           showToast={showToast}
           onSummaryGenerated={() =>
             setState((s) =>
-              "pt-ready-summary" in s.badges
+              PT_READY_SUMMARY_BADGE in s.badges
                 ? s
-                : { ...s, badges: { ...s.badges, "pt-ready-summary": new Date().toISOString() } }
+                : { ...s, badges: { ...s.badges, [PT_READY_SUMMARY_BADGE]: new Date().toISOString() } }
             )
           }
         />

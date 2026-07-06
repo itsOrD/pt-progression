@@ -5,7 +5,7 @@ export type Badge = {
   description: string;
 };
 
-export const BADGES: Badge[] = [
+export const BADGES = [
   { id: "first-checkin", name: "First Check-In", emoji: "📝", description: "Completed your first daily check-in." },
   { id: "heat-helped", name: "Heat Helped", emoji: "🔥", description: "Used heat as part of a day's plan." },
   { id: "walked-before-work", name: "Walked Before Work", emoji: "🌅", description: "Logged a walk on a day you also completed work blocks." },
@@ -19,6 +19,12 @@ export const BADGES: Badge[] = [
   { id: "symptom-detective", name: "Symptom Detective", emoji: "🔍", description: "Logged detailed notes across 3 days." },
   { id: "maintenance-ready", name: "Maintenance Ready", emoji: "🎓", description: "Met graduation criteria." },
   { id: "pt-ready-summary", name: "PT-Ready Summary", emoji: "📄", description: "Generated a clinician summary." },
-];
+] as const satisfies readonly Badge[];
 
-export const BADGE_MAP: Record<string, Badge> = Object.fromEntries(BADGES.map((b) => [b.id, b]));
+/** Literal union of every valid badge id — a typo'd id fails to compile wherever this is used. */
+export type BadgeId = (typeof BADGES)[number]["id"];
+
+export const BADGE_MAP: Record<BadgeId, Badge> = Object.fromEntries(BADGES.map((b) => [b.id, b])) as Record<
+  BadgeId,
+  Badge
+>;
