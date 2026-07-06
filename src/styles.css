@@ -212,6 +212,17 @@ button {
   background: var(--accent);
 }
 
+.save-warning-banner {
+  background: var(--serious);
+  color: #2b1206;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
 /* ------------------------------------------------------------------ sliders */
 
 .slider-field {

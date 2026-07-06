@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { AppState } from "../types";
 import { Card, Toggle } from "../ui/bits";
-import { exportJson, importJson, encodeStateToHash } from "../state/storage";
+import { exportJson, importJson, encodeStateToHash, isHashBackupHealthy } from "../state/storage";
 import { scoreFor, sortedDayEntries } from "../state/selectors";
 import { activeRedFlags } from "../engine/decision";
 import { PHASES } from "../data/plan";
@@ -30,14 +30,25 @@ export function SettingsView(props: {
   };
 
   const doImport = async (file: File) => {
-    const text = await file.text();
-    const imported = importJson(text);
-    if (!imported) {
-      showToast("That file didn't look like a valid backup.");
-      return;
+    try {
+      const text = await file.text();
+      const imported = importJson(text);
+      if (!imported) {
+        showToast("That file didn't look like a valid backup.");
+        return;
+      }
+      setState(() => imported.state);
+      showToast(
+        imported.droppedDayCount > 0
+          ? `Data imported ✔ (${imported.droppedDayCount} malformed day entr${
+              imported.droppedDayCount === 1 ? "y" : "ies"
+            } skipped)`
+          : "Data imported ✔"
+      );
+    } catch (err) {
+      console.error("doImport: failed to read the selected file", err);
+      showToast("Could not read that file — check it and try again.");
     }
-    setState(() => imported);
-    showToast("Data imported ✔");
   };
 
   const copyBackupLink = async () => {
@@ -148,8 +159,9 @@ export function SettingsView(props: {
           Copy URL backup link
         </button>
         <p className="muted">
-          The app also mirrors your data into the page URL after each change, so bookmarking the
-          page doubles as a backup.
+          {isHashBackupHealthy()
+            ? "The app also mirrors your data into the page URL after each change, so bookmarking the page doubles as a backup."
+            : "URL backup mirroring isn't working in this browser right now — use Export JSON to keep a safe copy."}
         </p>
         <button
           className="danger-btn"

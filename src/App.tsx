@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, DayEntry, ExtensionKind } from "./types";
-import { defaultState, loadState, readHashBackup, saveState, writeHashBackup, STORAGE_KEY } from "./state/storage";
+import {
+  defaultState,
+  didLastSaveFail,
+  loadState,
+  readHashBackup,
+  saveState,
+  writeHashBackup,
+  wasStorageCorrupt,
+  STORAGE_KEY,
+} from "./state/storage";
 import { decisionFor, emptyDay, evaluateBadges, getDay, toDateKey, dayNumberFor } from "./state/selectors";
 import { BADGE_MAP } from "./data/badges";
 import { OverviewView } from "./views/OverviewView";
@@ -21,12 +30,29 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "settings", label: "Settings", icon: "⚙️" },
 ];
 
+function stripBackupHash(): void {
+  const url = new URL(window.location.href);
+  url.hash = "";
+  window.history.replaceState(null, "", url);
+}
+
+// React.StrictMode double-invokes useState's lazy initializer in dev. Cache
+// the outcome so the confirm() prompt only ever fires once and a second
+// invocation can't see a hash the first one already stripped and end up
+// silently discarding the user's choice.
+let hashRestoreDecision: AppState | undefined;
+
 function initialState(): AppState {
   const stored = loadState();
   if (stored) return stored;
+  if (hashRestoreDecision) return hashRestoreDecision;
   const fromHash = readHashBackup();
-  if (fromHash) return fromHash;
-  return defaultState();
+  if (!fromHash) return (hashRestoreDecision = defaultState());
+  const savedLabel = fromHash.lastSavedAt ? new Date(fromHash.lastSavedAt).toLocaleString() : "an earlier session";
+  const restore = confirm(`Restore backup found in this link? Last saved ${savedLabel}`);
+  // Either way, don't leave the backup sitting in the URL to re-prompt later.
+  stripBackupHash();
+  return (hashRestoreDecision = restore ? fromHash : defaultState());
 }
 
 export default function App() {
@@ -34,6 +60,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("today");
   const [toast, setToast] = useState<string | null>(null);
   const [confetti, setConfetti] = useState(0);
+  const [saveFailing, setSaveFailing] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const todayKey = toDateKey(new Date());
 
@@ -46,6 +73,22 @@ export default function App() {
   const setState = useCallback((fn: (s: AppState) => AppState) => {
     setStateRaw((s) => saveState(fn(s)));
   }, []);
+
+  // One-time notice if what was on this device couldn't be trusted at load.
+  useEffect(() => {
+    if (wasStorageCorrupt()) {
+      showToast(
+        "Saved data couldn't be read — an untouched copy was preserved. Import a backup or reset from Settings."
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track whether the most recent save actually reached localStorage so we
+  // can keep a persistent warning up instead of quietly losing changes.
+  useEffect(() => {
+    setSaveFailing(didLastSaveFail());
+  }, [state]);
 
   const updateDay = useCallback(
     (dateKey: string, fn: (d: DayEntry) => DayEntry) => {
@@ -139,6 +182,12 @@ export default function App() {
           {todayKey}
         </span>
       </h1>
+
+      {saveFailing && (
+        <div className="save-warning-banner" role="alert" data-testid="save-warning">
+          Changes are not being saved to this device — export your data
+        </div>
+      )}
 
       {tab === "overview" && (
         <OverviewView
