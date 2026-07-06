@@ -233,3 +233,119 @@ test.describe("desk timer", () => {
     await expect(page.locator(".badge.earned", { hasText: "PT-Ready Summary" })).toBeVisible();
   });
 });
+
+test.describe("graduation runway", () => {
+  test("projects a graduation day from a few days of improving check-ins", async ({ page }) => {
+    await page.goto("./");
+    await page.evaluate(() => {
+      localStorage.clear();
+
+      const fmt = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      // Day 4 is "today"; the plan started 3 days ago.
+      const dateForDay = (dayNumber: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (4 - dayNumber));
+        return fmt(d);
+      };
+
+      const redFlags = {
+        legWeakness: false,
+        saddleNumbness: false,
+        troubleWalking: false,
+        bladderBowelChange: false,
+        troubleStartingUrine: false,
+        feverChills: false,
+        vomiting: false,
+        bloodUrineStool: false,
+        worseningAbdominalPain: false,
+      };
+
+      const evening = (worstSpike: number, sitting: number, standing: number, walkTolerance: number, walkDone: number) => ({
+        worstSpike,
+        postExercisePainIncrease: 0,
+        painStillElevatedAfterOneHour: false,
+        symptomsSpread: false,
+        sittingToleranceMinutes: sitting,
+        standingToleranceMinutes: standing,
+        walkingToleranceMinutes: walkTolerance,
+        walkingMinutesCompleted: walkDone,
+        heatUsed: false,
+        notes: "",
+      });
+
+      const d1 = dateForDay(1);
+      const d2 = dateForDay(2);
+      const d3 = dateForDay(3);
+      const d4 = dateForDay(4);
+
+      const state = {
+        version: 1,
+        startDate: d1,
+        phaseOverride: null,
+        days: {
+          [d1]: {
+            date: d1,
+            dayNumber: 1,
+            morning: { pain: 6, stiffness: 5, worseThanYesterday: false, sleepQuality: 6 },
+            current: { pain: 6, abdomenPressure: 1 },
+            evening: evening(7, 30, 20, 10, 10),
+            redFlags,
+            completedTaskIds: [],
+            swaps: {},
+            workBlocksCompleted: 0,
+            decision: "HOLD",
+          },
+          [d2]: {
+            date: d2,
+            dayNumber: 2,
+            morning: { pain: 5, stiffness: 5, worseThanYesterday: false, sleepQuality: 6 },
+            current: { pain: 5, abdomenPressure: 1 },
+            evening: evening(6, 40, 25, 15, 12),
+            redFlags,
+            completedTaskIds: [],
+            swaps: {},
+            workBlocksCompleted: 0,
+            decision: "ADVANCE",
+          },
+          [d3]: {
+            date: d3,
+            dayNumber: 3,
+            morning: { pain: 4, stiffness: 5, worseThanYesterday: false, sleepQuality: 6 },
+            current: { pain: 4, abdomenPressure: 1 },
+            evening: evening(5, 50, 30, 20, 15),
+            redFlags,
+            completedTaskIds: [],
+            swaps: {},
+            workBlocksCompleted: 0,
+            decision: "ADVANCE",
+          },
+          [d4]: {
+            date: d4,
+            dayNumber: 4,
+            morning: { pain: 3, stiffness: 5, worseThanYesterday: false, sleepQuality: 6 },
+            current: { pain: 3, abdomenPressure: 1 },
+            redFlags,
+            completedTaskIds: [],
+            swaps: {},
+            workBlocksCompleted: 0,
+          },
+        },
+        badges: {},
+        extension: null,
+        graduatedOn: null,
+        timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+        settings: { vibration: true, sound: false },
+        lastSavedAt: null,
+      };
+      localStorage.setItem("pt-progression-v1", JSON.stringify(state));
+    });
+    await page.reload();
+
+    await page.getByTestId("nav-overview").click();
+    const runway = page.getByTestId("runway-card");
+    await expect(runway).toBeVisible();
+    await expect(page.getByTestId("runway-met-count")).toContainText("of 9 criteria met");
+    await expect(runway.getByText(/≈ Day/)).not.toHaveCount(0);
+  });
+});
