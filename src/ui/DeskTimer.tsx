@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { TimerState } from "../types";
 import { ExerciseFigure } from "./ExerciseFigure";
+import { pickBreakSuggestion, type BreakTask } from "./breakSuggestion";
 
 export const WORK_MS = 25 * 60 * 1000;
 export const BREAK_MS = 90 * 1000;
@@ -12,13 +13,7 @@ function fmt(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export type BreakTask = {
-  taskId: string;
-  exerciseId: string;
-  name: string;
-  dose: string;
-  done: boolean;
-};
+export type { BreakTask };
 
 export function DeskTimer(props: {
   timer: TimerState;
@@ -26,7 +21,7 @@ export function DeskTimer(props: {
   vibration: boolean;
   onTimer: (t: TimerState) => void;
   onBlockComplete: () => void;
-  /** Today's desk/movement tasks, offered up round-robin during breaks. */
+  /** Today's desk-survival tasks, offered up round-robin during breaks. */
   breakTasks?: BreakTask[];
   onBreakTaskDone?: (taskId: string) => void;
 }) {
@@ -96,15 +91,8 @@ export function DeskTimer(props: {
   // same exercise — starting at the rotation index, take the first not-done
   // task (wrapping) so the "Did it" button is always actionable when shown.
   const breakTasks = props.breakTasks ?? [];
-  const suggestion = ((): BreakTask | undefined => {
-    if (breakTasks.length === 0) return undefined;
-    const startIdx = props.timer.blocksCompletedTotal % breakTasks.length;
-    for (let i = 0; i < breakTasks.length; i++) {
-      const candidate = breakTasks[(startIdx + i) % breakTasks.length];
-      if (!candidate.done) return candidate;
-    }
-    return undefined;
-  })();
+  const startIdx = breakTasks.length === 0 ? 0 : props.timer.blocksCompletedTotal % breakTasks.length;
+  const suggestion = pickBreakSuggestion(breakTasks, startIdx);
   const allBreakTasksDone = breakTasks.length > 0 && suggestion === undefined;
 
   return (
@@ -143,7 +131,7 @@ export function DeskTimer(props: {
             {fmt(remaining)}
           </div>
           {suggestion ? (
-            <div className="task-card" data-testid="break-suggestion">
+            <div className="task-card" data-testid="break-suggestion" aria-live="polite" aria-atomic="true">
               <div className="task-detail" style={{ marginTop: 0 }}>
                 <ExerciseFigure exerciseId={suggestion.exerciseId} alt={suggestion.name} size={64} />
                 <div style={{ minWidth: 0, flex: 1 }}>

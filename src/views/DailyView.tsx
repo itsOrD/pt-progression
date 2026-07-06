@@ -200,7 +200,7 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
           const tasks = shown.tasks.filter((t) => t.group === g);
           if (tasks.length === 0) return null;
           return (
-            <div key={g}>
+            <div key={g} data-testid={`group-${g}`}>
               <h3 style={{ marginTop: 12 }}>{GROUP_LABELS[g]}</h3>
               {tasks.map((task) => (
                 <ExerciseCard

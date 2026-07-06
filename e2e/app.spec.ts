@@ -242,10 +242,8 @@ test.describe("desk timer", () => {
     const checked = page.locator(".task-check.checked");
     await expect(checked).toHaveCount(1);
     const taskId = (await checked.getAttribute("data-testid"))!.replace(/^check-/, "");
-    const groupHeading = await checked.evaluate(
-      (el) => el.closest("[data-testid^='task-']")?.parentElement?.querySelector("h3")?.textContent ?? ""
-    );
-    expect(groupHeading).toContain("Desk survival");
+    await expect(page.getByTestId("group-desk").locator(".task-check.checked")).toHaveCount(1);
+    await expect(page.getByTestId("group-desk").locator("h3")).toContainText("Desk survival");
 
     const completedTaskIds = await page.evaluate(() => {
       const state = JSON.parse(localStorage.getItem("pt-progression-v1")!);
