@@ -61,6 +61,16 @@ export default function App() {
     [advanceToast]
   );
 
+  // Clear any pending toast timer/backlog on unmount so a burst of queued
+  // toasts can't keep calling setState after the component is gone.
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastQueue.current = [];
+    },
+    []
+  );
+
   const setState = useCallback((fn: (s: AppState) => AppState) => {
     setStateRaw((s) => saveState(fn(s)));
   }, []);
@@ -141,6 +151,13 @@ export default function App() {
   };
 
   const onReset = () => {
+    // Flush any queued/showing celebratory toasts first so a stale "Badge
+    // earned" can't play alongside (or after) the erase confirmation.
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = null;
+    toastQueue.current = [];
+    setToast(null);
+
     localStorage.removeItem(STORAGE_KEY);
     const url = new URL(window.location.href);
     url.hash = "";
