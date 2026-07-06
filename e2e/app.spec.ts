@@ -148,6 +148,31 @@ test.describe("export / import", () => {
     expect(Object.keys(data.days).length).toBeGreaterThan(0);
   });
 
+  test("export downloads valid CSV", async ({ page }) => {
+    await freshPage(page);
+    await setSlider(page, "morning-pain", 4);
+    const today = await page.evaluate(() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    });
+    await page.getByTestId("nav-settings").click();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByTestId("export-csv").click();
+    const download = await downloadPromise;
+    const path = await download.path();
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(path!, "utf8");
+    const lines = text.trim().split("\n");
+    expect(lines[0]).toBe(
+      "date,day,morning_pain,stiffness,sleep_quality,worse_than_yesterday,current_pain,abdominal_pressure," +
+        "worst_spike,post_exercise_pain_increase,pain_elevated_after_1h,symptoms_spread,sitting_tolerance_min," +
+        "standing_tolerance_min,walking_tolerance_min,walking_done_min,heat_used,work_blocks,no_twist_pledge," +
+        "tasks_completed,decision,notes"
+    );
+    expect(lines.length).toBe(2);
+    expect(lines[1].startsWith(`${today},1,4,`)).toBe(true);
+  });
+
   test("import replaces state from a JSON file", async ({ page }) => {
     await freshPage(page);
     const today = await page.evaluate(() => {
