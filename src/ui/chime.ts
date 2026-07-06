@@ -3,8 +3,9 @@
 // iOS Safari suspends (or refuses to start) an AudioContext unless it's
 // created/resumed from inside a user-gesture handler (a click, not a timer
 // callback). So we lazily create one module-level context via unlockAudio(),
-// called from the timer's start/stop buttons, and reuse it later from the
-// (non-gesture) transition effect where the actual chime plays.
+// called from the timer's start/resume buttons (start, startBreak), and reuse
+// it later from the (non-gesture) transition effect where the actual chime
+// plays.
 
 type AudioCtor = typeof AudioContext;
 
