@@ -120,11 +120,40 @@ describe("forecastGraduation", () => {
     expect(pain.projectedDay).toBeNull();
   });
 
-  it("flags not-enough-data with fewer than 3 points, and skips projection", () => {
+  it("flags a criterion with fewer than 3 of its own points as not-enough-data, and skips its projection", () => {
+    // Only pain is short on history here; sitting/walking/spike still have 3 points each, so the
+    // card as a whole isn't data-starved — see the next two tests for that distinction.
     const result = forecastGraduation(input({ painHistory: pts([5, 4]) }));
-    expect(result.enoughData).toBe(false);
     const pain = result.criteria.find((c) => c.label === "Current pain ≤ 2")!;
+    expect(pain.hasEnoughData).toBe(false);
     expect(pain.projectedDay).toBeNull();
+  });
+
+  it("still projects criteria with enough history even when another criterion is data-starved", () => {
+    // A user who skips pain check-ins but keeps logging sitting/walking shouldn't lose those
+    // projections — each criterion owns its own sufficiency, not a single card-wide gate.
+    const result = forecastGraduation(input({ painHistory: pts([5, 4]) }));
+    const sitting = result.criteria.find((c) => c.label.startsWith("Sitting"))!;
+    const walking = result.criteria.find((c) => c.label.startsWith("Walking"))!;
+    expect(sitting.hasEnoughData).toBe(true);
+    expect(sitting.projectedDay).not.toBeNull();
+    expect(walking.hasEnoughData).toBe(true);
+    expect(walking.projectedDay).not.toBeNull();
+    // The card renders projections despite pain being short on data.
+    expect(result.enoughData).toBe(true);
+  });
+
+  it("marks the card as too-early only when every criterion lacks its own history", () => {
+    const result = forecastGraduation(
+      input({
+        painHistory: pts([5, 4]),
+        spikeHistory: pts([6, 5]),
+        sittingHistory: pts([30, 45]),
+        walkingHistory: pts([10, 15]),
+      })
+    );
+    expect(result.criteria.every((c) => !c.hasEnoughData)).toBe(true);
+    expect(result.enoughData).toBe(false);
   });
 
   it("floors projectedReadyDay at day 10 even when every criterion crosses earlier", () => {

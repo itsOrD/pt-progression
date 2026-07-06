@@ -11,6 +11,8 @@ export type CriterionForecast = {
   target: number;
   direction: ForecastDirection;
   projectedDay: number | null;
+  /** True once this criterion has 3+ points of its own history — enough to fit a trend line. */
+  hasEnoughData: boolean;
 };
 
 export type ForecastInput = {
@@ -27,10 +29,15 @@ export type ForecastResult = {
   metCount: number;
   totalCount: number;
   projectedReadyDay: number | null;
+  /** True as soon as ANY criterion has enough history to project — see CriterionForecast.hasEnoughData
+   *  for the per-criterion state. Only false when every criterion is still too data-starved to project. */
   enoughData: boolean;
 };
 
-/** The plan is 10 days, plus at most two 7-day extensions. Past that a straight line is fiction. */
+/**
+ * Cap projections at Day 24 (10-day plan + two 7-day extensions' worth) — beyond that a straight
+ * line is fiction, regardless of how many extensions the app allows.
+ */
 const MAX_PROJECTION_DAY = 24;
 const GRADUATION_DAY_FLOOR = 10;
 
@@ -92,8 +99,9 @@ function buildCriterion(
 ): CriterionForecast {
   const met = graduation.metCriteria.includes(label);
   const current = history.length ? latestPoint(history).value : null;
+  const hasEnoughData = history.length >= 3;
   const projectedDay = met ? null : projectDay(history, target, direction);
-  return { label, met, current, target, direction, projectedDay };
+  return { label, met, current, target, direction, projectedDay, hasEnoughData };
 }
 
 export function forecastGraduation(input: ForecastInput): ForecastResult {
@@ -123,6 +131,6 @@ export function forecastGraduation(input: ForecastInput): ForecastResult {
     metCount: input.graduation.metCriteria.length,
     totalCount: input.graduation.metCriteria.length + input.graduation.missingCriteria.length,
     projectedReadyDay,
-    enoughData: input.painHistory.length >= 3,
+    enoughData: criteria.some((c) => c.hasEnoughData),
   };
 }

@@ -119,6 +119,12 @@ export function OverviewView(props: {
                 {forecast.metCount} of {forecast.totalCount} criteria met
               </p>
               <table className="plain">
+                <thead>
+                  <tr>
+                    <th>Criterion</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {forecast.criteria.map((c) => (
                     <tr key={c.label}>
@@ -126,9 +132,11 @@ export function OverviewView(props: {
                       <td className="muted">
                         {c.met
                           ? "met ✓"
-                          : c.projectedDay !== null
-                            ? `${c.current} now → ${c.target} target · ≈ Day ${c.projectedDay}`
-                            : `${c.current ?? "—"} now → ${c.target} target · no clear trend yet`}
+                          : !c.hasEnoughData
+                            ? `${c.current ?? "—"} now → ${c.target} target · needs more check-ins`
+                            : c.projectedDay !== null
+                              ? `${c.current} now → ${c.target} target · ≈ Day ${c.projectedDay}`
+                              : `${c.current ?? "—"} now → ${c.target} target · no clear trend yet`}
                       </td>
                     </tr>
                   ))}
