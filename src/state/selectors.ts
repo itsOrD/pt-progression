@@ -1,4 +1,4 @@
-import type { AppState, DayEntry, Decision } from "../types";
+import type { AppState, DayEntry, Decision, EveningReview } from "../types";
 import { EMPTY_RED_FLAGS } from "../types";
 import {
   activeRedFlags,
@@ -52,6 +52,27 @@ export function getDay(state: AppState, dateKey: string): DayEntry {
   return state.days[dateKey] ?? emptyDay(dateKey, dayNumberFor(dateKey, state.startDate));
 }
 
+/**
+ * Sensible starting values for a first-time evening review, seeded from the
+ * day's own check-ins where available. Shared by DailyView (today) and
+ * DayEditor (past days) so "start an evening review" behaves identically
+ * regardless of which day is being filled in.
+ */
+export function defaultEveningFor(day: DayEntry): EveningReview {
+  return {
+    worstSpike: day.current?.pain ?? day.morning?.pain ?? 3,
+    postExercisePainIncrease: 0,
+    painStillElevatedAfterOneHour: false,
+    symptomsSpread: false,
+    sittingToleranceMinutes: 30,
+    standingToleranceMinutes: 15,
+    walkingToleranceMinutes: 15,
+    walkingMinutesCompleted: 0,
+    heatUsed: false,
+    notes: "",
+  };
+}
+
 export function sortedDayEntries(state: AppState): DayEntry[] {
   return Object.values(state.days).sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -95,6 +116,26 @@ export function buildDecisionInput(state: AppState, dateKey: string): DecisionIn
 
 export function decisionFor(state: AppState, dateKey: string): DecisionResult {
   return decide(buildDecisionInput(state, dateKey));
+}
+
+/**
+ * Editing a past day's check-ins can change its own stored decision — and
+ * the decision engine also looks back up to 2 prior days for sitting/
+ * standing tolerance trends, so later days' stored decisions can go stale
+ * too. Walk forward from the edited date, oldest → newest, threading the
+ * updated state through each step so later days see the corrected data.
+ */
+export function recomputeDecisions(state: AppState, fromDate: string): AppState {
+  const affectedDates = sortedDayEntries(state)
+    .filter((d) => d.date >= fromDate)
+    .map((d) => d.date);
+  return affectedDates.reduce((s, date) => {
+    const day = getDay(s, date);
+    const hasCheckin = !!(day.morning || day.current || day.evening);
+    const decision = hasCheckin ? decisionFor(s, date).decision : undefined;
+    if (day.decision === decision) return s;
+    return { ...s, days: { ...s.days, [date]: { ...day, decision } } };
+  }, state);
 }
 
 export function greenStreak(state: AppState, throughDate: string): number {

@@ -5,7 +5,7 @@ import { ExerciseCard } from "../ui/ExerciseCard";
 import { DeskTimer } from "../ui/DeskTimer";
 import { DECISION_META } from "../ui/charts";
 import { RED_FLAG_LABELS } from "../engine/decision";
-import { adjustedPlanFor, basePlanFor, decisionFor, getDay } from "../state/selectors";
+import { adjustedPlanFor, basePlanFor, decisionFor, defaultEveningFor, getDay } from "../state/selectors";
 import { getExercise } from "../data/exercises";
 
 type Props = {
@@ -30,19 +30,6 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
   const plan = adjustedPlanFor(state, todayKey);
   const base = basePlanFor(state, todayKey);
   const serious = result.decision === "GET_CHECKED";
-
-  const defaultEvening: EveningReview = {
-    worstSpike: day.current?.pain ?? day.morning?.pain ?? 3,
-    postExercisePainIncrease: 0,
-    painStillElevatedAfterOneHour: false,
-    symptomsSpread: false,
-    sittingToleranceMinutes: 30,
-    standingToleranceMinutes: 15,
-    walkingToleranceMinutes: 15,
-    walkingMinutesCompleted: 0,
-    heatUsed: false,
-    notes: "",
-  };
 
   const groups = ["relief", "movement", "strength", "desk"] as const;
   const shown = showBase ? base : plan;
@@ -236,7 +223,7 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
           <button
             className="primary-btn"
             data-testid="start-evening-review"
-            onClick={() => updateDay(todayKey, (d) => ({ ...d, evening: defaultEvening }))}
+            onClick={() => updateDay(todayKey, (d) => ({ ...d, evening: defaultEveningFor(d) }))}
           >
             Start evening review
           </button>

@@ -233,3 +233,81 @@ test.describe("desk timer", () => {
     await expect(page.locator(".badge.earned", { hasText: "PT-Ready Summary" })).toBeVisible();
   });
 });
+
+test.describe("edit past days", () => {
+  test("editing a past day's check-ins recomputes its stored decision honestly", async ({ page }) => {
+    await freshPage(page);
+    const yesterday = await page.evaluate(() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    });
+
+    await page.evaluate((yesterday) => {
+      const state = {
+        version: 1,
+        startDate: yesterday,
+        phaseOverride: null,
+        days: {
+          [yesterday]: {
+            date: yesterday,
+            dayNumber: 1,
+            morning: { pain: 7, stiffness: 5, worseThanYesterday: false, sleepQuality: 4 },
+            current: { pain: 7, abdomenPressure: 1 },
+            redFlags: {
+              legWeakness: false,
+              saddleNumbness: false,
+              troubleWalking: false,
+              bladderBowelChange: false,
+              troubleStartingUrine: false,
+              feverChills: false,
+              vomiting: false,
+              bloodUrineStool: false,
+              worseningAbdominalPain: false,
+            },
+            completedTaskIds: [],
+            swaps: {},
+            workBlocksCompleted: 0,
+            decision: "BACK_OFF",
+          },
+        },
+        badges: {},
+        extension: null,
+        graduatedOn: null,
+        timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+        settings: { vibration: true, sound: false },
+        lastSavedAt: null,
+      };
+      localStorage.setItem("pt-progression-v1", JSON.stringify(state));
+    }, yesterday);
+    await page.reload();
+
+    await page.getByTestId("nav-progress").click();
+    const row = page.getByTestId("edit-day-1");
+    await expect(row.locator("td").nth(9)).toHaveText("BACK_OFF");
+
+    await row.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+
+    // Safety: red flags and task completion must never be editable from a past-day
+    // editor — red flags are safety data that shouldn't be rewritten after the fact,
+    // and task completion is out of scope. Catch a future leak by asserting the
+    // testid patterns DailyView uses for these controls render zero times here.
+    await expect(dialog.locator('[data-testid^="redflag-"]')).toHaveCount(0);
+    await expect(dialog.locator('[data-testid^="check-"]')).toHaveCount(0);
+
+    await setSlider(page, "editor-morning-pain", 2);
+    await setSlider(page, "editor-current-pain", 2);
+    await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+
+    await expect(row.locator("td").nth(1)).toHaveText("2"); // AM pain
+    await expect(row.locator("td").nth(2)).toHaveText("2"); // current pain
+    await expect(row.locator("td").nth(9)).toHaveText("ADVANCE"); // stored decision recomputed
+
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pt-progression-v1")!));
+    expect(stored.days[yesterday].current.pain).toBe(2);
+    expect(stored.days[yesterday].decision).toBe("ADVANCE");
+  });
+});

@@ -1,15 +1,24 @@
-import type { AppState } from "../types";
-import { Card } from "../ui/bits";
+import { useState } from "react";
+import type { AppState, DayEntry } from "../types";
+import { Card, Modal } from "../ui/bits";
+import { DayEditor } from "../ui/DayEditor";
 import { DecisionStrip, SparkRow } from "../ui/charts";
 import { decisionHistory, scoreFor, sortedDayEntries } from "../state/selectors";
 import { phaseForDay } from "../data/plan";
 import { completionPct } from "../engine/adjust";
 
-export function ProgressView(props: { state: AppState; todayKey: string }) {
-  const { state, todayKey } = props;
+type Props = {
+  state: AppState;
+  todayKey: string;
+  updateDay: (dateKey: string, fn: (d: DayEntry) => DayEntry) => void;
+};
+
+export function ProgressView({ state, todayKey, updateDay }: Props) {
+  const [editingDate, setEditingDate] = useState<string | null>(null);
   const entries = sortedDayEntries(state);
   const score = scoreFor(state, todayKey);
   const history = decisionHistory(state);
+  const editingDay = editingDate ? entries.find((d) => d.date === editingDate) : undefined;
 
   const completions = entries.map((d) => {
     const plan = phaseForDay(d.dayNumber, state.phaseOverride);
@@ -79,9 +88,25 @@ export function ProgressView(props: { state: AppState; todayKey: string }) {
             </thead>
             <tbody>
               {entries.map((d, i) => (
-                <tr key={d.date}>
+                <tr
+                  key={d.date}
+                  className="editable-row"
+                  onClick={() => setEditingDate(d.date)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Edit day ${d.dayNumber}`}
+                  data-testid={`edit-day-${d.dayNumber}`}
+                  onKeyDown={(e) => {
+                    // Space's default action scrolls the page — suppress it (and Enter's,
+                    // for consistency) before treating the key as an "open editor" activation.
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setEditingDate(d.date);
+                    }
+                  }}
+                >
                   <td>
-                    {d.dayNumber} <span className="muted">{d.date.slice(5)}</span>
+                    {d.dayNumber} <span className="muted">{d.date.slice(5)}</span> <span aria-hidden>✏️</span>
                   </td>
                   <td>{d.morning?.pain ?? "—"}</td>
                   <td>{d.current?.pain ?? "—"}</td>
@@ -104,7 +129,16 @@ export function ProgressView(props: { state: AppState; todayKey: string }) {
             </tbody>
           </table>
         </div>
+        <p className="muted" style={{ marginBottom: 0 }}>
+          Tap a row to fix a mislogged entry — decisions recompute from the corrected data.
+        </p>
       </Card>
+
+      {editingDay && (
+        <Modal title={`Edit Day ${editingDay.dayNumber} (${editingDay.date})`} onClose={() => setEditingDate(null)}>
+          <DayEditor day={editingDay} onEdit={(fn) => updateDay(editingDay.date, fn)} />
+        </Modal>
+      )}
     </>
   );
 }
