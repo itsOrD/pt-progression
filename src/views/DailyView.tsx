@@ -5,7 +5,7 @@ import { ExerciseCard } from "../ui/ExerciseCard";
 import { DeskTimer } from "../ui/DeskTimer";
 import { DECISION_META } from "../ui/charts";
 import { RED_FLAG_LABELS } from "../engine/decision";
-import { adjustedPlanFor, basePlanFor, decisionFor, getDay } from "../state/selectors";
+import { adjustedPlanFor, basePlanFor, decisionFor, getDay, morningPainTrend, type PainTrend } from "../state/selectors";
 import { getExercise } from "../data/exercises";
 
 type Props = {
@@ -22,6 +22,23 @@ const GROUP_LABELS: Record<string, string> = {
   desk: "💻 Desk survival",
 };
 
+const TREND_GLYPH: Record<PainTrend["direction"], string> = {
+  down: "↓",
+  same: "→",
+  up: "↑",
+};
+
+function trendCopy(trend: PainTrend): string {
+  switch (trend.direction) {
+    case "down":
+      return `Down from ${trend.yesterday} yesterday — mornings are trending your way.`;
+    case "up":
+      return `Up from ${trend.yesterday} yesterday — worth a gentler start today.`;
+    case "same":
+      return "Same as yesterday morning — steady counts.";
+  }
+}
+
 export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
   const [showBase, setShowBase] = useState(false);
   const day = getDay(state, todayKey);
@@ -30,6 +47,7 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
   const plan = adjustedPlanFor(state, todayKey);
   const base = basePlanFor(state, todayKey);
   const serious = result.decision === "GET_CHECKED";
+  const painTrend = morningPainTrend(state, todayKey);
 
   const defaultEvening: EveningReview = {
     worstSpike: day.current?.pain ?? day.morning?.pain ?? 3,
@@ -110,6 +128,14 @@ export function DailyView({ state, todayKey, updateDay, setTimer }: Props) {
                 updateDay(todayKey, (d) => ({ ...d, morning: { ...d.morning!, worseThanYesterday: v } }))
               }
             />
+            {painTrend && (
+              <p className={`pain-trend pain-trend-${painTrend.direction}`} data-testid="pain-trend-callout">
+                <span className="glyph" aria-hidden="true">
+                  {TREND_GLYPH[painTrend.direction]}
+                </span>{" "}
+                {trendCopy(painTrend)}
+              </p>
+            )}
           </>
         )}
         {!day.morning && <p className="muted">Slide to record pain on waking — the rest appears after.</p>}

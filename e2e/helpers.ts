@@ -30,3 +30,53 @@ export async function freshPage(page: Page): Promise<void> {
   });
   await page.reload();
 }
+
+/**
+ * Seed a morning check-in for the calendar day before today, so the daily
+ * view's pain-trend callout has something to compare today's slider against.
+ * Call after freshPage(); reloads the page so App picks up the seeded state.
+ */
+export async function seedYesterdayMorningPain(page: Page, pain: number): Promise<void> {
+  await page.evaluate((p) => {
+    const toKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = toKey(yesterday);
+    const state = {
+      version: 1,
+      startDate: toKey(today),
+      phaseOverride: null,
+      days: {
+        [yesterdayKey]: {
+          date: yesterdayKey,
+          dayNumber: 0,
+          morning: { pain: p, stiffness: 3, worseThanYesterday: false, sleepQuality: 5 },
+          redFlags: {
+            legWeakness: false,
+            saddleNumbness: false,
+            troubleWalking: false,
+            bladderBowelChange: false,
+            troubleStartingUrine: false,
+            feverChills: false,
+            vomiting: false,
+            bloodUrineStool: false,
+            worseningAbdominalPain: false,
+          },
+          completedTaskIds: [],
+          swaps: {},
+          workBlocksCompleted: 0,
+        },
+      },
+      badges: {},
+      extension: null,
+      graduatedOn: null,
+      timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+      settings: { vibration: true, sound: false },
+      lastSavedAt: null,
+    };
+    localStorage.setItem("pt-progression-v1", JSON.stringify(state));
+  }, pain);
+  await page.reload();
+}

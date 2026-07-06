@@ -236,6 +236,29 @@ input[type="range"] {
   height: 28px;
 }
 
+/* ------------------------------------------------------------- pain trend */
+
+.pain-trend {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.pain-trend .glyph {
+  font-weight: 700;
+}
+.pain-trend-down .glyph {
+  color: var(--good-text);
+}
+.pain-trend-same .glyph {
+  color: var(--text-muted);
+}
+.pain-trend-up .glyph {
+  color: var(--warning);
+}
+
 .toggle-field {
   display: flex;
   justify-content: space-between;

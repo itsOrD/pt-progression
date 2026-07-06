@@ -69,6 +69,39 @@ export function nextMorningWorse(state: AppState, dateKey: string): boolean {
   return day?.morning?.worseThanYesterday ?? false;
 }
 
+/**
+ * Yesterday's recorded morning pain, or null when there's nothing to compare:
+ * the plan's first day, or a gap day with no check-in. We only ever look at
+ * the single calendar day before `todayKey` — reaching further back would
+ * misrepresent the comparison as "vs yesterday".
+ */
+export function yesterdayMorningPain(state: AppState, todayKey: string): number | null {
+  const yesterdayKey = addDays(todayKey, -1);
+  return state.days[yesterdayKey]?.morning?.pain ?? null;
+}
+
+export type PainTrendDirection = "down" | "same" | "up";
+
+export type PainTrend = {
+  direction: PainTrendDirection;
+  yesterday: number;
+  today: number;
+};
+
+/**
+ * Compares today's morning pain to yesterday's, once today's is recorded.
+ * Null before today's morning check-in, or when yesterday has no comparable
+ * entry (first day / gap day) — silence beats a nag or a misleading number.
+ */
+export function morningPainTrend(state: AppState, todayKey: string): PainTrend | null {
+  const today = state.days[todayKey]?.morning?.pain;
+  if (today === undefined || today === null) return null;
+  const yesterday = yesterdayMorningPain(state, todayKey);
+  if (yesterday === null) return null;
+  const direction: PainTrendDirection = today < yesterday ? "down" : today > yesterday ? "up" : "same";
+  return { direction, yesterday, today };
+}
+
 export function buildDecisionInput(state: AppState, dateKey: string): DecisionInput {
   const day = getDay(state, dateKey);
   const prior = daysBefore(state, dateKey);
