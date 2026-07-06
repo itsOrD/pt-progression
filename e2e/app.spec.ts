@@ -94,6 +94,24 @@ test.describe("task completion", () => {
     await expect(page.getByTestId("overview-decision")).toBeVisible();
   });
 
+  test("checking a task applies the completion celebration class, unchecking doesn't", async ({ page }) => {
+    await freshPage(page);
+    await setSlider(page, "morning-pain", 3);
+
+    const firstCheck = page.locator('[data-testid^="check-"]').first();
+    const firstCard = page.locator('[data-testid^="task-"]').first();
+
+    // real unchecked -> checked transition: celebration class applied
+    await firstCheck.click();
+    await expect(firstCheck).toHaveClass(/celebrate/);
+    await expect(firstCard).toHaveClass(/celebrate/);
+
+    // unchecking never triggers the celebration
+    await firstCheck.click();
+    await expect(firstCheck).not.toHaveClass(/checked/);
+    await expect(firstCheck).not.toHaveClass(/celebrate/);
+  });
+
   test("swap replaces an exercise with a same-element alternative", async ({ page }) => {
     await freshPage(page);
     await setSlider(page, "morning-pain", 3);

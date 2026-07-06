@@ -281,6 +281,7 @@ input[type="checkbox"].switch:checked::after {
 /* ------------------------------------------------------------ task checkbox */
 
 .task-card {
+  position: relative;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px;
@@ -289,6 +290,25 @@ input[type="checkbox"].switch:checked::after {
 }
 .task-card.done {
   border-color: var(--good);
+}
+/* completion celebration: a brief success flash, opacity-only so it never shifts layout */
+.task-card.celebrate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--good);
+  opacity: 0;
+  pointer-events: none;
+  animation: celebrate-glow 0.35s ease-out;
+}
+@keyframes celebrate-glow {
+  0% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 .task-head {
   display: flex;
@@ -317,7 +337,10 @@ input[type="checkbox"].switch:checked::after {
   background: var(--good);
   border-color: var(--good);
   color: #fff;
-  animation: pop 0.32s ease;
+}
+/* the bounce only plays on a genuine check transition (see .celebrate below), not on mount */
+.task-check.celebrate {
+  animation: pop 0.35s ease;
 }
 @keyframes pop {
   0% {
@@ -729,7 +752,8 @@ table.plain th {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .task-check.checked,
+  .task-check.celebrate,
+  .task-card.celebrate::after,
   .confetti-piece,
   .toast {
     animation: none;

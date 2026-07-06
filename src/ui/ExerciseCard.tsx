@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AdjustedTask, Decision } from "../types";
 import { getExercise } from "../data/exercises";
 import { swapCandidates } from "../engine/adjust";
 import { SOURCE_LIST } from "../data/sources";
 import { ExerciseFigure } from "./ExerciseFigure";
 import { Modal } from "./bits";
+import { enteredDone, leftDone } from "./celebrate";
+
+const CELEBRATE_MS = 400;
 
 function sourceLabel(url: string): string {
   const s = SOURCE_LIST.find((s) => s.url === url);
@@ -26,14 +29,35 @@ export function ExerciseCard(props: {
   const [showWhy, setShowWhy] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const wasDone = useRef(props.done);
   const ex = getExercise(props.task.exerciseId);
   const media = ex.media[0];
 
+  // Fires the completion celebration only on a real unchecked -> checked
+  // transition — never on initial mount of an already-done task, and never
+  // when unchecking (see enteredDone/leftDone in ./celebrate).
+  useEffect(() => {
+    const prevDone = wasDone.current;
+    wasDone.current = props.done;
+    if (enteredDone(prevDone, props.done)) {
+      setCelebrate(true);
+      const t = window.setTimeout(() => setCelebrate(false), CELEBRATE_MS);
+      return () => window.clearTimeout(t);
+    }
+    if (leftDone(prevDone, props.done)) {
+      setCelebrate(false);
+    }
+  }, [props.done]);
+
   return (
-    <div className={`task-card ${props.done ? "done" : ""}`} data-testid={`task-${props.task.taskId}`}>
+    <div
+      className={`task-card ${props.done ? "done" : ""} ${celebrate ? "celebrate" : ""}`}
+      data-testid={`task-${props.task.taskId}`}
+    >
       <div className="task-head">
         <button
-          className={`task-check ${props.done ? "checked" : ""}`}
+          className={`task-check ${props.done ? "checked" : ""} ${celebrate ? "celebrate" : ""}`}
           onClick={props.onToggle}
           aria-label={`Mark ${ex.name} ${props.done ? "not done" : "done"}`}
           data-testid={`check-${props.task.taskId}`}
