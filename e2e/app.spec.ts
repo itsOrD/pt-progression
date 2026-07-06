@@ -287,7 +287,16 @@ test.describe("edit past days", () => {
     await expect(row.locator("td").nth(9)).toHaveText("BACK_OFF");
 
     await row.click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+
+    // Safety: red flags and task completion must never be editable from a past-day
+    // editor — red flags are safety data that shouldn't be rewritten after the fact,
+    // and task completion is out of scope. Catch a future leak by asserting the
+    // testid patterns DailyView uses for these controls render zero times here.
+    await expect(dialog.locator('[data-testid^="redflag-"]')).toHaveCount(0);
+    await expect(dialog.locator('[data-testid^="check-"]')).toHaveCount(0);
+
     await setSlider(page, "editor-morning-pain", 2);
     await setSlider(page, "editor-current-pain", 2);
     await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();

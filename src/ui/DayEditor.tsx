@@ -1,23 +1,11 @@
 import type { DayEntry, EveningReview } from "../types";
 import { Slider, Toggle } from "./bits";
+import { defaultEveningFor } from "../state/selectors";
 
 type Props = {
   day: DayEntry;
   onEdit: (fn: (d: DayEntry) => DayEntry) => void;
 };
-
-const defaultEveningFor = (day: DayEntry): EveningReview => ({
-  worstSpike: day.current?.pain ?? day.morning?.pain ?? 3,
-  postExercisePainIncrease: 0,
-  painStillElevatedAfterOneHour: false,
-  symptomsSpread: false,
-  sittingToleranceMinutes: 30,
-  standingToleranceMinutes: 15,
-  walkingToleranceMinutes: 15,
-  walkingMinutesCompleted: 0,
-  heatUsed: false,
-  notes: "",
-});
 
 /**
  * Edits one past day's check-ins. Red flags and task completion are

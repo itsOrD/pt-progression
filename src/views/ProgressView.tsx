@@ -97,7 +97,12 @@ export function ProgressView({ state, todayKey, updateDay }: Props) {
                   aria-label={`Edit day ${d.dayNumber}`}
                   data-testid={`edit-day-${d.dayNumber}`}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") setEditingDate(d.date);
+                    // Space's default action scrolls the page — suppress it (and Enter's,
+                    // for consistency) before treating the key as an "open editor" activation.
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setEditingDate(d.date);
+                    }
                   }}
                 >
                   <td>

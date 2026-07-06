@@ -1,4 +1,4 @@
-import type { AppState, DayEntry, Decision } from "../types";
+import type { AppState, DayEntry, Decision, EveningReview } from "../types";
 import { EMPTY_RED_FLAGS } from "../types";
 import {
   activeRedFlags,
@@ -50,6 +50,27 @@ export function emptyDay(dateKey: string, dayNumber: number): DayEntry {
 
 export function getDay(state: AppState, dateKey: string): DayEntry {
   return state.days[dateKey] ?? emptyDay(dateKey, dayNumberFor(dateKey, state.startDate));
+}
+
+/**
+ * Sensible starting values for a first-time evening review, seeded from the
+ * day's own check-ins where available. Shared by DailyView (today) and
+ * DayEditor (past days) so "start an evening review" behaves identically
+ * regardless of which day is being filled in.
+ */
+export function defaultEveningFor(day: DayEntry): EveningReview {
+  return {
+    worstSpike: day.current?.pain ?? day.morning?.pain ?? 3,
+    postExercisePainIncrease: 0,
+    painStillElevatedAfterOneHour: false,
+    symptomsSpread: false,
+    sittingToleranceMinutes: 30,
+    standingToleranceMinutes: 15,
+    walkingToleranceMinutes: 15,
+    walkingMinutesCompleted: 0,
+    heatUsed: false,
+    notes: "",
+  };
 }
 
 export function sortedDayEntries(state: AppState): DayEntry[] {
