@@ -30,7 +30,10 @@ export type Exercise = {
   avoidWhen: string[];
   stopIf: string[];
   substitutions: string[];
-  media: { kind: MediaKind; url?: string; alt: string }[];
+  media: (
+    | { kind: "local-svg"; alt: string }
+    | { kind: "external-link" | "youtube-link" | "gif-link"; url: string; alt: string }
+  )[];
   researchLinks: string[];
   safeWhenFlared?: boolean;
   avoidIfSpreading?: boolean;
@@ -106,6 +109,7 @@ export type DayEntry = {
   swaps: Record<string, string>;
   workBlocksCompleted: number;
   noTwistPledgeKept?: boolean;
+  /** Snapshot of the decision computed on this day; frozen once the day is in the past, never recomputed retroactively. */
   decision?: Decision;
 };
 

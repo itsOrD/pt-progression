@@ -3,6 +3,7 @@ import type { AppState, DayEntry, ExtensionKind } from "./types";
 import { defaultState, loadState, readHashBackup, saveState, writeHashBackup, STORAGE_KEY } from "./state/storage";
 import { decisionFor, emptyDay, evaluateBadges, getDay, toDateKey, dayNumberFor } from "./state/selectors";
 import { BADGE_MAP } from "./data/badges";
+import { EXTENSION_LENGTH_DAYS } from "./data/plan";
 import { OverviewView } from "./views/OverviewView";
 import { DailyView } from "./views/DailyView";
 import { LibraryView } from "./views/LibraryView";
@@ -113,7 +114,7 @@ export default function App() {
       extension: { kind, startedOnDay: day.dayNumber },
       phaseOverride: phaseByKind[kind],
     }));
-    showToast(`Plan extended 7 days (${kind.replace(/-/g, " ")})`);
+    showToast(`Plan extended ${EXTENSION_LENGTH_DAYS} days (${kind.replace(/-/g, " ")})`);
   };
 
   const onGraduate = () => {

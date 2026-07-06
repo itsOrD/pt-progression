@@ -68,7 +68,13 @@ export function ExerciseCard(props: {
       {showDetail && (
         <>
           <div className="task-detail">
-            <ExerciseFigure exerciseId={ex.id} alt={media.alt} />
+            {media.kind === "local-svg" ? (
+              <ExerciseFigure exerciseId={ex.id} alt={media.alt} />
+            ) : (
+              <a className="muted" href={media.url} target="_blank" rel="noreferrer">
+                {media.alt}
+              </a>
+            )}
             <div style={{ fontSize: "0.82rem", minWidth: 0 }}>
               {ex.doWhen.length > 0 && (
                 <div className="secondary">Do when: {ex.doWhen.join("; ")}</div>

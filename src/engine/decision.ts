@@ -216,11 +216,13 @@ export function formalHelpReasons(s: PlanStatusInput): string[] {
   const reasons: string[] = [];
   if (s.firstPain !== null && s.recentPain !== null && s.firstPain > 0) {
     const improvement = (s.firstPain - s.recentPain) / s.firstPain;
+    // Less than half recovered by the review point → the plan alone isn't cutting it; a clinician should take a look.
     if (improvement < 0.5) {
       reasons.push(`Less than 50% improved by Day ${s.dayNumber} (pain ${s.firstPain} → ${s.recentPain})`);
     }
   }
   const spikes = s.recentSpikes.filter((v): v is number => v !== null);
+  // Persistent severe spikes despite following the plan → pain control is insufficient.
   if (spikes.length >= 2 && spikes.slice(-2).every((v) => v >= 7)) {
     reasons.push("Spikes still reaching 7+ recently");
   }
