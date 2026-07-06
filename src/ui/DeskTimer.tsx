@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { TimerState } from "../types";
+import { playChime, unlockAudio } from "./chime";
 
 export const WORK_MS = 25 * 60 * 1000;
 export const BREAK_MS = 90 * 1000;
@@ -15,6 +16,7 @@ export function DeskTimer(props: {
   timer: TimerState;
   blocksToday: number;
   vibration: boolean;
+  sound: boolean;
   onTimer: (t: TimerState) => void;
   onBlockComplete: () => void;
 }) {
@@ -58,6 +60,7 @@ export function DeskTimer(props: {
       // Block finished → movement break. Anchor the break to the scheduled end
       // so a backgrounded tab doesn't stretch the schedule.
       buzz([120, 60, 120]);
+      if (props.sound) playChime("work-end");
       props.onBlockComplete();
       const base = Math.max(endsAt, Date.now() - BREAK_MS + 1000);
       props.onTimer({
@@ -68,6 +71,7 @@ export function DeskTimer(props: {
       });
     } else {
       buzz([80]);
+      if (props.sound) playChime("break-end");
       props.onTimer({ ...props.timer, mode: "idle", endsAt: null });
     }
     setTimeout(() => {
@@ -76,8 +80,16 @@ export function DeskTimer(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, endsAt, remaining]);
 
-  const start = () => props.onTimer({ ...props.timer, mode: "work", endsAt: Date.now() + WORK_MS });
-  const startBreak = () => props.onTimer({ ...props.timer, mode: "break", endsAt: Date.now() + BREAK_MS });
+  // WebAudio needs a user gesture to unlock on iOS Safari — piggyback on the
+  // timer buttons rather than requiring a separate "enable sound" tap.
+  const start = () => {
+    if (props.sound) unlockAudio();
+    props.onTimer({ ...props.timer, mode: "work", endsAt: Date.now() + WORK_MS });
+  };
+  const startBreak = () => {
+    if (props.sound) unlockAudio();
+    props.onTimer({ ...props.timer, mode: "break", endsAt: Date.now() + BREAK_MS });
+  };
   const stop = () => props.onTimer({ ...props.timer, mode: "idle", endsAt: null });
 
   return (
