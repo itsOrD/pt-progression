@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { AppState } from "../types";
 import { Card, Toggle } from "../ui/bits";
 import { exportJson, importJson, encodeStateToHash } from "../state/storage";
-import { scoreFor, sortedDayEntries } from "../state/selectors";
+import { scoreFor, sortedDayEntries, dayNumberFor } from "../state/selectors";
 import { activeRedFlags } from "../engine/decision";
 import { PHASES } from "../data/plan";
 
@@ -11,6 +11,7 @@ export function SettingsView(props: {
   todayKey: string;
   setState: (fn: (s: AppState) => AppState) => void;
   onReset: () => void;
+  onStartNewEpisode: () => void;
   onSummaryGenerated: () => void;
   showToast: (msg: string) => void;
 }) {
@@ -152,6 +153,27 @@ export function SettingsView(props: {
           page doubles as a backup.
         </p>
         <button
+          className="warn-btn"
+          data-testid="start-new-episode"
+          onClick={() => {
+            if (
+              confirm(
+                "Start a new episode? Current episode will be archived, not deleted — every " +
+                  "day you've logged, your badges, and your progress stay saved and viewable " +
+                  "under Past episodes. Today's tracker resets to Day 1 with a new start date."
+              )
+            ) {
+              props.onStartNewEpisode();
+            }
+          }}
+        >
+          Start new episode
+        </button>
+        <p className="muted">
+          Flared up again after recovering? Archive this run instead of erasing it — your full
+          history stays intact, and today becomes Day 1 of a fresh episode.
+        </p>
+        <button
           className="danger-btn"
           data-testid="reset-data"
           onClick={() => {
@@ -163,6 +185,25 @@ export function SettingsView(props: {
           Reset all data
         </button>
       </Card>
+
+      {props.state.pastEpisodes && props.state.pastEpisodes.length > 0 && (
+        <Card title="📜 Past episodes" testId="past-episodes">
+          <p className="muted" style={{ marginTop: 0 }}>
+            Read-only health record of prior runs. Nothing here can be edited or deleted from the
+            app.
+          </p>
+          <ul className="secondary">
+            {props.state.pastEpisodes.map((ep, i) => (
+              <li key={`${ep.startDate}-${i}`} data-testid={`past-episode-${i}`}>
+                Started {ep.startDate} · {Object.keys(ep.days).length} day(s) logged ·{" "}
+                {ep.graduatedOn
+                  ? "graduated ✓"
+                  : `ended day ${dayNumberFor(ep.endedOn, ep.startDate)}`}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title="🩺 Clinician summary">
         <p className="muted" style={{ marginTop: 0 }}>
