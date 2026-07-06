@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, DayEntry, ExtensionKind } from "./types";
-import { defaultState, loadState, readHashBackup, saveState, writeHashBackup, STORAGE_KEY } from "./state/storage";
+import {
+  archiveEpisode,
+  defaultState,
+  loadState,
+  readHashBackup,
+  saveState,
+  writeHashBackup,
+  STORAGE_KEY,
+} from "./state/storage";
 import { decisionFor, emptyDay, evaluateBadges, getDay, toDateKey, dayNumberFor } from "./state/selectors";
 import { BADGE_MAP } from "./data/badges";
 import { OverviewView } from "./views/OverviewView";
@@ -131,6 +139,11 @@ export default function App() {
     showToast("All data erased");
   };
 
+  const onStartNewEpisode = () => {
+    setState((s) => archiveEpisode(s, todayKey));
+    showToast("Episode archived — fresh start today.");
+  };
+
   return (
     <>
       <h1 style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -166,6 +179,7 @@ export default function App() {
           todayKey={todayKey}
           setState={setState}
           onReset={onReset}
+          onStartNewEpisode={onStartNewEpisode}
           showToast={showToast}
           onSummaryGenerated={() =>
             setState((s) =>

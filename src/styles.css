@@ -506,6 +506,14 @@ input[type="checkbox"].switch:checked::after {
   padding: 10px 14px;
   width: 100%;
 }
+.warn-btn {
+  background: none;
+  border: 1px solid var(--warning);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 10px 14px;
+  width: 100%;
+}
 
 /* ---------------------------------------------------------------- flowchart */
 

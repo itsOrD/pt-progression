@@ -233,3 +233,90 @@ test.describe("desk timer", () => {
     await expect(page.locator(".badge.earned", { hasText: "PT-Ready Summary" })).toBeVisible();
   });
 });
+
+test.describe("episodes", () => {
+  test("starting a new episode archives history and resets to Day 1", async ({ page }) => {
+    await freshPage(page);
+    const { today, yesterday } = await page.evaluate(() => {
+      const key = (dt: Date) =>
+        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+      const now = new Date();
+      const prior = new Date(now);
+      prior.setDate(now.getDate() - 1);
+      return { today: key(now), yesterday: key(prior) };
+    });
+
+    const redFlags = {
+      legWeakness: false,
+      saddleNumbness: false,
+      troubleWalking: false,
+      bladderBowelChange: false,
+      troubleStartingUrine: false,
+      feverChills: false,
+      vomiting: false,
+      bloodUrineStool: false,
+      worseningAbdominalPain: false,
+    };
+    const priorRun = {
+      version: 1,
+      startDate: yesterday,
+      phaseOverride: null,
+      days: {
+        [yesterday]: {
+          date: yesterday,
+          dayNumber: 1,
+          morning: { pain: 6, stiffness: 5, worseThanYesterday: false, sleepQuality: 5 },
+          current: { pain: 6, abdomenPressure: 1 },
+          redFlags,
+          completedTaskIds: [],
+          swaps: {},
+          workBlocksCompleted: 0,
+        },
+        [today]: {
+          date: today,
+          dayNumber: 2,
+          morning: { pain: 3, stiffness: 2, worseThanYesterday: false, sleepQuality: 6 },
+          current: { pain: 3, abdomenPressure: 0 },
+          redFlags,
+          completedTaskIds: [],
+          swaps: {},
+          workBlocksCompleted: 0,
+        },
+      },
+      badges: { "first-checkin": new Date().toISOString() },
+      extension: null,
+      graduatedOn: null,
+      timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+      settings: { vibration: true, sound: false },
+      lastSavedAt: null,
+    };
+
+    // Seed history via the existing import flow rather than reaching into
+    // localStorage directly, so this test stays realistic to what a user did.
+    await page.getByTestId("nav-settings").click();
+    await page.getByTestId("import-file").setInputFiles({
+      name: "backup.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(priorRun)),
+    });
+    await expect(page.getByTestId("toast")).toContainText("imported");
+
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByTestId("start-new-episode").click();
+    await expect(page.getByTestId("toast")).toContainText("archived");
+
+    await expect(page.getByTestId("past-episode-0")).toContainText(`Started ${yesterday}`);
+    await expect(page.getByTestId("past-episode-0")).toContainText("2 day(s) logged");
+    await expect(page.getByTestId("past-episode-0")).toContainText("ended day 2");
+
+    await page.getByTestId("nav-overview").click();
+    await expect(page.getByTestId("overview-decision")).toContainText("Day 1 of");
+
+    const stored = await page.evaluate(() => localStorage.getItem("pt-progression-v1"));
+    const parsed = JSON.parse(stored!);
+    expect(parsed.pastEpisodes).toHaveLength(1);
+    expect(parsed.pastEpisodes[0].startDate).toBe(yesterday);
+    expect(Object.keys(parsed.pastEpisodes[0].days)).toHaveLength(2);
+    expect(Object.keys(parsed.days)).toHaveLength(0);
+  });
+});

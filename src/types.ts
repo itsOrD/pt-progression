@@ -135,6 +135,21 @@ export type Settings = {
   sound: boolean;
 };
 
+/**
+ * A fully-preserved prior run. Back-pain relapse is the realistic long-term
+ * path, so this is a health record (the complete day-by-day log), not a
+ * lossy summary — a returning user or their clinician may need every detail
+ * from a past flare, not just its headline outcome.
+ */
+export type PastEpisode = {
+  startDate: string; // YYYY-MM-DD, when this episode began
+  endedOn: string; // YYYY-MM-DD, when the episode was archived
+  days: Record<string, DayEntry>;
+  badges: Record<string, string>; // badgeId -> ISO date earned
+  extension: ExtensionState | null;
+  graduatedOn: string | null;
+};
+
 export type AppState = {
   version: 1;
   startDate: string; // YYYY-MM-DD
@@ -146,6 +161,8 @@ export type AppState = {
   timer: TimerState;
   settings: Settings;
   lastSavedAt: number | null;
+  /** Archived prior runs, oldest first. Absent/empty for a first-ever episode. */
+  pastEpisodes?: PastEpisode[];
 };
 
 export type TaskGroup = "relief" | "movement" | "strength" | "desk";

@@ -1,4 +1,4 @@
-import type { AppState } from "../types";
+import type { AppState, PastEpisode } from "../types";
 import { toDateKey } from "./selectors";
 
 export const STORAGE_KEY = "pt-progression-v1";
@@ -19,6 +19,21 @@ export function defaultState(todayKey?: string): AppState {
   };
 }
 
+/**
+ * Tolerate a malformed pastEpisodes field the same shallow way the rest of
+ * this function tolerates a malformed timer/settings — drop what's clearly
+ * broken rather than rejecting the whole backup. We do NOT deep-validate
+ * every archived day; each episode just needs to be an object with a
+ * string startDate to be kept as a health record.
+ */
+function sanitizePastEpisodes(raw: unknown): PastEpisode[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const kept = raw.filter(
+    (e): e is PastEpisode => !!e && typeof e === "object" && typeof (e as PastEpisode).startDate === "string"
+  );
+  return kept;
+}
+
 export function validateState(raw: unknown): AppState | null {
   if (!raw || typeof raw !== "object") return null;
   const s = raw as Partial<AppState>;
@@ -33,6 +48,31 @@ export function validateState(raw: unknown): AppState | null {
     badges: (s.badges as AppState["badges"]) ?? {},
     timer: { ...base.timer, ...(s.timer ?? {}) },
     settings: { ...base.settings, ...(s.settings ?? {}) },
+    pastEpisodes: sanitizePastEpisodes(s.pastEpisodes),
+  };
+}
+
+/**
+ * Start a new episode without losing the old one. Relapse is the realistic
+ * long-term path for back pain, so "Reset" (destroy everything) shouldn't be
+ * the only option for a returning user — archive the full run as a health
+ * record instead. Settings and prior episodes carry forward; everything
+ * about the run itself (days, badges, extension, graduation, phase override,
+ * timer) resets fresh, same as a brand-new install.
+ */
+export function archiveEpisode(state: AppState, todayKey: string): AppState {
+  const archived: PastEpisode = {
+    startDate: state.startDate,
+    endedOn: todayKey,
+    days: state.days,
+    badges: state.badges,
+    extension: state.extension,
+    graduatedOn: state.graduatedOn,
+  };
+  return {
+    ...defaultState(todayKey),
+    settings: state.settings,
+    pastEpisodes: [...(state.pastEpisodes ?? []), archived],
   };
 }
 
