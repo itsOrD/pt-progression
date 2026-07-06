@@ -25,9 +25,16 @@ const HEADER = [
   "notes",
 ];
 
-/** Wrap a field in double quotes (doubling internal quotes) if it needs CSV escaping. */
+/**
+ * Wrap a field in double quotes (doubling internal quotes) if it needs CSV escaping.
+ *
+ * Note: Fields are NOT formula-injection-guarded (e.g., no apostrophe prefix for
+ * leading =/+/-/@) because prefixing corrupts legitimate notes like "-3 pain today"
+ * in a single-user export of the user's own data. This is a deliberate tradeoff:
+ * in a future multi-user fork, consider adding formula-injection guards at that time.
+ */
 export function escapeCsvField(value: string): string {
-  if (/[",\n]/.test(value)) {
+  if (/[",\n\r]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;

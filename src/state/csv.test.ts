@@ -108,4 +108,8 @@ describe("dayEntriesToCsv", () => {
     );
     expect(lines[2]).toBe('after walk"');
   });
+
+  it("escapes a carriage return via escapeCsvField", () => {
+    expect(escapeCsvField("note\rtext")).toBe('"note\rtext"');
+  });
 });
