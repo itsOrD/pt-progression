@@ -70,17 +70,58 @@ describe("computeInsights", () => {
     expect(walking.sentence).toMatch(/started better/);
   });
 
-  it("never uses causal language across a mixed fixture", () => {
-    const input: InsightsInput = {
-      workVsSpike: pairs([2, 3, 4, 5, 6, 7], [3, 4, 5, 6, 7, 8]), // strong positive
-      walkingVsNextMorning: pairs([10, 20, 30, 40, 50], [8, 6, 4, 2, 0]), // strong negative
-      sleepVsPain: pairs([1, 2, 3, 4, 5, 6], [5, 1, 5, 1, 5, 1]), // no clear link
-    };
-    const insights: Insight[] = computeInsights(input);
-    expect(insights.length).toBe(3);
-    for (const insight of insights) {
-      expect(insight.sentence.toLowerCase()).not.toContain("causes");
-      expect(insight.sentence.toLowerCase()).not.toContain("because");
+  it("never uses causal or directive language, across every emitted branch", () => {
+    // Banned words go beyond the literal "causes"/"because": anything that reads as an
+    // effect claim (reduces/improves), a causal link (leads to/due to), or a behavioral
+    // directive (so you should/worth ...) is disallowed. A sentence is allowed to use one
+    // of these words only if it's neutralized by the fixed safety phrase "association, not
+    // cause" (e.g. "... — association, not cause.").
+    const BANNED = /\b(causes?|because|reduces?|improves?|leads to|due to|so you should|worth)\b/i;
+    const SAFE_PHRASE = "association, not cause";
+
+    function assertObservational(insight: Insight) {
+      const { sentence } = insight;
+      const isSafe = sentence.includes(SAFE_PHRASE) || !BANNED.test(sentence);
+      expect(isSafe, `directive/causal language in ${insight.key} (${insight.strength}): "${sentence}"`).toBe(true);
     }
+
+    // Fixtures crafted so every spec (workVsSpike / walkingVsNextMorning / sleepVsPain) hits
+    // every sentence branch (insufficient, none, positive, negative) at least once.
+    const fixtures: InsightsInput[] = [
+      {
+        // insufficient: fewer than 5 pairs for every metric
+        workVsSpike: pairs([1, 2, 3], [1, 2, 3]),
+        walkingVsNextMorning: pairs([1, 2, 3], [1, 2, 3]),
+        sleepVsPain: pairs([1, 2, 3], [1, 2, 3]),
+      },
+      {
+        // none: |r| < 0.5 for every metric
+        workVsSpike: pairs([1, 2, 3, 4, 5, 6], [5, 1, 5, 1, 5, 1]),
+        walkingVsNextMorning: pairs([1, 2, 3, 4, 5, 6], [5, 1, 5, 1, 5, 1]),
+        sleepVsPain: pairs([1, 2, 3, 4, 5, 6], [5, 1, 5, 1, 5, 1]),
+      },
+      {
+        // positive: strong positive correlation for every metric
+        workVsSpike: pairs([2, 3, 4, 5, 6, 7], [3, 4, 5, 6, 7, 8]),
+        walkingVsNextMorning: pairs([10, 20, 30, 40, 50], [0, 2, 4, 6, 8]),
+        sleepVsPain: pairs([1, 2, 3, 4, 5], [2, 4, 6, 8, 10]),
+      },
+      {
+        // negative: strong negative correlation for every metric
+        workVsSpike: pairs([2, 3, 4, 5, 6, 7], [8, 7, 6, 5, 4, 3]),
+        walkingVsNextMorning: pairs([10, 20, 30, 40, 50], [8, 6, 4, 2, 0]),
+        sleepVsPain: pairs([1, 2, 3, 4, 5], [10, 8, 6, 4, 2]),
+      },
+    ];
+
+    let checked = 0;
+    for (const input of fixtures) {
+      for (const insight of computeInsights(input)) {
+        assertObservational(insight);
+        checked++;
+      }
+    }
+    // 4 fixtures x 3 metrics — guards against a fixture silently computing fewer insights.
+    expect(checked).toBe(12);
   });
 });

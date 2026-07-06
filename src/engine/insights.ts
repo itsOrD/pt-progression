@@ -71,7 +71,7 @@ const SPECS: InsightSpec[] = [
     negative: (r2, n) =>
       `Mornings after bigger walking days started better (r ${r2}, ${n} pairs) — association, not cause.`,
     positive: (r2, n) =>
-      `Mornings after bigger walking days started worse (r ${r2}, ${n} pairs) — worth pacing the walks.`,
+      `Mornings after bigger walking days started worse (r ${r2}, ${n} pairs) — association, not cause.`,
   },
   {
     key: "sleepVsPain",
