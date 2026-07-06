@@ -1,7 +1,7 @@
-import type { AppState } from "../types";
+import type { AppState, Decision } from "../types";
 import { Card } from "../ui/bits";
 import { DECISION_META } from "../ui/charts";
-import { decisionFor } from "../state/selectors";
+import { decisionFor, recentDecisionCounts, RECENT_DECISION_WINDOW } from "../state/selectors";
 
 type NodeDef = {
   id: string;
@@ -39,11 +39,36 @@ const NODES: NodeDef[] = [
   { id: "do-minimum", text: "🌗 DO MINIMUM", kind: "terminal", color: "var(--accent-deep)" },
 ];
 
+/** Maps outcome-node ids to the Decision whose recent count they should mirror. */
+const NODE_DECISION: Partial<Record<string, Decision>> = {
+  "get-checked": "GET_CHECKED",
+  "back-off": "BACK_OFF",
+  hold: "HOLD",
+  advance: "ADVANCE",
+  "do-minimum": "DO_MINIMUM",
+};
+
 export function FlowchartView(props: { state: AppState; todayKey: string }) {
   const result = decisionFor(props.state, props.todayKey);
   const path = result.flowPath;
   const active = (id: string) => path.includes(id);
   const meta = DECISION_META[result.decision];
+
+  const counts = recentDecisionCounts(props.state);
+  const countFor = (nodeId: string): number => {
+    const decision = NODE_DECISION[nodeId];
+    return decision ? counts[decision] : 0;
+  };
+  const anyBadges = NODES.some((n) => countFor(n.id) > 0);
+  const countBadge = (nodeId: string) => {
+    const count = countFor(nodeId);
+    if (count === 0) return null;
+    return (
+      <span className="flow-count" data-testid={`decision-count-${NODE_DECISION[nodeId]}`}>
+        ×{count}
+      </span>
+    );
+  };
 
   return (
     <>
@@ -88,6 +113,7 @@ export function FlowchartView(props: { state: AppState; todayKey: string }) {
                       data-testid={`flow-${terminal.id}`}
                     >
                       {terminal.text}
+                      {countBadge(terminal.id)}
                     </div>
                   </div>
                 </div>
@@ -107,10 +133,16 @@ export function FlowchartView(props: { state: AppState; todayKey: string }) {
                 data-testid={`flow-${node.id}`}
               >
                 {node.text} <span style={{ fontWeight: 400 }}>(pain OK but the day fell short)</span>
+                {countBadge(node.id)}
               </div>
             </div>
           );
         })}
+        {anyBadges && (
+          <p className="muted flow-count-legend" data-testid="flow-count-legend">
+            Counts = your last {RECENT_DECISION_WINDOW} logged days.
+          </p>
+        )}
       </Card>
 
       <Card title="Beyond Day 10">

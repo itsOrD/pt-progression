@@ -199,6 +199,89 @@ test.describe("export / import", () => {
   });
 });
 
+test.describe("flowchart breadcrumbs", () => {
+  test("outcome nodes show a count badge for the user's recent decisions", async ({ page }) => {
+    await freshPage(page);
+
+    const dateKeys: string[] = await page.evaluate(() => {
+      const fmt = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const keys: string[] = [];
+      for (let i = 3; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        keys.push(fmt(d));
+      }
+      return keys; // [3 days ago, 2 days ago, yesterday, today]
+    });
+    const todayKey = dateKeys[3];
+
+    const emptyRedFlags = {
+      legWeakness: false,
+      saddleNumbness: false,
+      troubleWalking: false,
+      bladderBowelChange: false,
+      troubleStartingUrine: false,
+      feverChills: false,
+      vomiting: false,
+      bloodUrineStool: false,
+      worseningAbdominalPain: false,
+    };
+    const days: Record<string, unknown> = {};
+    dateKeys.slice(0, 3).forEach((date, i) => {
+      days[date] = {
+        date,
+        dayNumber: i + 1,
+        redFlags: emptyRedFlags,
+        completedTaskIds: [],
+        swaps: {},
+        workBlocksCompleted: 0,
+        decision: "HOLD", // 3 logged HOLD days
+      };
+    });
+    // Today gets green inputs so it resolves to ADVANCE, not HOLD, keeping the
+    // HOLD count unambiguous.
+    days[todayKey] = {
+      date: todayKey,
+      dayNumber: 4,
+      morning: { pain: 3, stiffness: 2, worseThanYesterday: false, sleepQuality: 6 },
+      current: { pain: 3, abdomenPressure: 1 },
+      redFlags: emptyRedFlags,
+      completedTaskIds: [],
+      swaps: {},
+      workBlocksCompleted: 0,
+    };
+
+    const state = {
+      version: 1,
+      startDate: dateKeys[0],
+      phaseOverride: null,
+      days,
+      badges: {},
+      extension: null,
+      graduatedOn: null,
+      timer: { mode: "idle", endsAt: null, blocksCompletedTotal: 0 },
+      settings: { vibration: true, sound: false },
+      lastSavedAt: null,
+    };
+
+    await page.getByTestId("nav-settings").click();
+    await page.getByTestId("import-file").setInputFiles({
+      name: "backup.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(state)),
+    });
+    await expect(page.getByTestId("toast")).toContainText("imported");
+
+    await page.getByTestId("nav-flow").click();
+    await expect(page.getByTestId("decision-count-HOLD")).toHaveText("×3");
+    await expect(page.getByTestId("flow-count-legend")).toContainText("last 10 logged days");
+    // Nodes with zero recent occurrences render no badge at all.
+    await expect(page.getByTestId("decision-count-GET_CHECKED")).toHaveCount(0);
+    await expect(page.getByTestId("decision-count-BACK_OFF")).toHaveCount(0);
+  });
+});
+
 test.describe("desk timer", () => {
   test("starts, persists across reload, and flips to break after 25 minutes", async ({ page }) => {
     await page.clock.install();
