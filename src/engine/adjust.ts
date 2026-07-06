@@ -27,6 +27,24 @@ export function doseLevelFor(decision: Decision): DoseLevel {
   }
 }
 
+export function planNote(decision: Decision): string {
+  switch (decision) {
+    case "GET_CHECKED":
+      return "Everything except gentle relief is paused. Getting checked comes first.";
+    case "BACK_OFF":
+      return "Scaled back to relief, desk breaks, and flare-safe movement at regressed doses.";
+    case "HOLD":
+      return "Same plan, minimum doses. No progression today.";
+    case "DO_MINIMUM":
+      return "Core tasks only, minimum doses — a light day still counts.";
+    case "ADVANCE":
+    case "GRADUATE":
+      return "Green day — progressed doses where available.";
+    case "EXTEND":
+      return "Standard doses.";
+  }
+}
+
 export function doseFor(ex: Exercise, level: DoseLevel): string {
   switch (level) {
     case "regress":
@@ -95,25 +113,15 @@ export function adjustPlan(
     tasks.push({ ...task, exerciseId: exId, dose: doseFor(ex, level), doseLevel: level });
   }
 
-  const note =
-    decision === "GET_CHECKED"
-      ? "Everything except gentle relief is paused. Getting checked comes first."
-      : decision === "BACK_OFF"
-        ? "Scaled back to relief, desk breaks, and flare-safe movement at regressed doses."
-        : decision === "HOLD"
-          ? "Same plan, minimum doses. No progression today."
-          : decision === "DO_MINIMUM"
-            ? "Core tasks only, minimum doses — a light day still counts."
-            : decision === "ADVANCE" || decision === "GRADUATE"
-              ? "Green day — progressed doses where available."
-              : "Standard doses.";
+  const note = planNote(decision);
 
   return { phase, decision, tasks, droppedTaskIds: dropped, note };
 }
 
 /**
  * Swap candidates: same element; equal-or-lower irritability when the day is
- * Hold/Back Off/Get Checked, same or slightly higher difficulty when green.
+ * restrictive (Hold/Back Off/Get Checked/Do Minimum), same or slightly higher
+ * difficulty when green.
  */
 export function swapCandidates(
   exerciseId: string,

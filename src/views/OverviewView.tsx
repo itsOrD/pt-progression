@@ -12,7 +12,8 @@ import {
   sortedDayEntries,
 } from "../state/selectors";
 import { completionPct } from "../engine/adjust";
-import { PLAN_LENGTH_DAYS } from "../data/plan";
+import { EXTENSION_LENGTH_DAYS, MAINTENANCE_TASKS, PLAN_LENGTH_DAYS } from "../data/plan";
+import { getExercise } from "../data/exercises";
 
 export function OverviewView(props: {
   state: AppState;
@@ -33,22 +34,25 @@ export function OverviewView(props: {
   const streak = checkinStreak(state, todayKey);
   const serious = result.decision === "GET_CHECKED";
 
-  const nextAction = serious
-    ? "Contact a clinician about the red-flag answers before continuing the plan."
-    : !day.morning
-      ? "Do the morning check-in — it sets today's plan."
-      : pct < 100
-        ? "Open Today and knock out the next task."
-        : !day.evening
-          ? "Finish with the evening review to lock in today's decision."
-          : "Done for today. Tomorrow's morning check-in closes the loop.";
+  let nextAction: string;
+  if (serious) {
+    nextAction = "Contact a clinician about the red-flag answers before continuing the plan.";
+  } else if (!day.morning) {
+    nextAction = "Do the morning check-in — it sets today's plan.";
+  } else if (pct < 100) {
+    nextAction = "Open Today and knock out the next task.";
+  } else if (!day.evening) {
+    nextAction = "Finish with the evening review to lock in today's decision.";
+  } else {
+    nextAction = "Done for today. Tomorrow's morning check-in closes the loop.";
+  }
 
   return (
     <>
       <div className={`decision-banner decision-${result.decision}`} data-testid="overview-decision">
         <h2>
           {meta.icon} Day {Math.max(1, day.dayNumber)} of {PLAN_LENGTH_DAYS}
-          {state.extension ? " (+7 extension)" : ""} · {plan.phase.name} phase
+          {state.extension ? ` (+${EXTENSION_LENGTH_DAYS} extension)` : ""} · {plan.phase.name} phase
         </h2>
         <div style={{ fontSize: "0.95rem", fontWeight: 600 }}>Decision: {meta.label}</div>
         <div style={{ fontSize: "0.85rem", marginTop: 4 }}>{meta.blurb}</div>
@@ -60,6 +64,17 @@ export function OverviewView(props: {
             Graduated on {state.graduatedOn}. Keep the maintenance circuit and the walking habit —
             walking 3–5×/week is the strongest recurrence protection we have evidence for.
           </p>
+          <div style={{ marginTop: 8 }}>
+            {MAINTENANCE_TASKS.map((id) => {
+              const ex = getExercise(id);
+              return (
+                <div className="row spread" key={id} style={{ marginTop: 4 }}>
+                  <span className="task-title">{ex.name}</span>
+                  <span className="task-dose">{ex.defaultDose}</span>
+                </div>
+              );
+            })}
+          </div>
         </Card>
       )}
 
@@ -112,7 +127,7 @@ export function OverviewView(props: {
             improving. {status.reasons.join(" ")}
           </p>
           <button className="primary-btn" data-testid="accept-extension" onClick={() => props.onExtend(status.extensionKind)}>
-            Extend 7 days ({status.extensionKind.replace(/-/g, " ")})
+            Extend {EXTENSION_LENGTH_DAYS} days ({status.extensionKind.replace(/-/g, " ")})
           </button>
         </Card>
       )}
