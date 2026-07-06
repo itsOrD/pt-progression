@@ -223,6 +223,37 @@ test.describe("desk timer", () => {
     await expect(page.getByTestId("blocks-today")).toHaveText("1");
   });
 
+  test("break suggests a desk task and checking it off completes it and advances", async ({ page }) => {
+    await freshPage(page);
+    await page.getByTestId("timer-break-now").click();
+
+    await expect(page.getByTestId("break-suggestion")).toBeVisible();
+    const firstName = (await page.getByTestId("break-suggestion-name").innerText()).trim();
+    expect(firstName.length).toBeGreaterThan(0);
+
+    await page.getByTestId("break-suggestion-done").click();
+
+    // suggestion advances to the next not-done desk task, still actionable
+    await expect(page.getByTestId("break-suggestion-name")).not.toHaveText(firstName);
+    await expect(page.getByTestId("break-suggestion-done")).toBeEnabled();
+    await expect(page.getByTestId("break-suggestion-done")).toHaveText("Did it ✓");
+
+    // the first task is checked off in today's plan, under the desk-survival group
+    const checked = page.locator(".task-check.checked");
+    await expect(checked).toHaveCount(1);
+    const taskId = (await checked.getAttribute("data-testid"))!.replace(/^check-/, "");
+    await expect(page.getByTestId("group-desk").locator(".task-check.checked")).toHaveCount(1);
+    await expect(page.getByTestId("group-desk").locator("h3")).toContainText("Desk survival");
+
+    const completedTaskIds = await page.evaluate(() => {
+      const state = JSON.parse(localStorage.getItem("pt-progression-v1")!);
+      const now = new Date();
+      const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      return (state.days[todayKey]?.completedTaskIds ?? []) as string[];
+    });
+    expect(completedTaskIds).toContain(taskId);
+  });
+
   test("summary generation earns the PT-Ready badge", async ({ page }) => {
     await freshPage(page);
     await setSlider(page, "morning-pain", 3);
